@@ -207,7 +207,10 @@
      OF FLOW and anchored into that gutter. See the .vi rule for why. */
   .srowwrap{display:flex; align-items:baseline; position:relative; padding-right:24px;
     border-bottom:1px solid var(--line);
-    break-inside:avoid; -webkit-column-break-inside:avoid}
+    break-inside:avoid; -webkit-column-break-inside:avoid;
+    /* Row bottom -> the value text's baseline, which the verdict glyph is
+       anchored to. Derived, not measured off a screen -- see the .vi rule. */
+    --vi-baseline:6.2px}
   .srowwrap:last-child{border-bottom:0}
   .srowwrap > .srow{flex:1 1 auto; min-width:0; border-bottom:0}
   /* ABSOLUTELY POSITIONED, so the icon contributes nothing to the row's height.
@@ -249,7 +252,6 @@
 
      The BOX still spans the whole row (top:0; bottom:0) so the click target keeps
      its full height and cannot overhang the border; only the glyph inside moves. */
-  .srowwrap{--vi-baseline:6.2px}
   .srowwrap > .vi{position:absolute; right:0; top:0; bottom:0; width:22px;
     appearance:none; background:none; border:0; padding:0;
     display:flex; align-items:flex-end; justify-content:center; line-height:1;
