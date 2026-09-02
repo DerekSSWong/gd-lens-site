@@ -11,6 +11,9 @@ Drop a Grim Dawn save in and see the character behind it, published at
   coloured by what it is worth to *this* build, as a Grim Raynbow `text_en`
   override you drop into `<Grim Dawn>/settings/text_en/`
 
+The page opens on a **bundled sample character** so there is something to look at
+straight away; drop your own `.gdc` on it to replace them.
+
 ## Your save never leaves your machine
 
 There is no upload and no server. The page is one self-contained HTML file: it
