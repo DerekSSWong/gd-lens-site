@@ -179,9 +179,8 @@
      without it the label refuses to shrink and pushes the value out instead. */
   .srow .lbl{flex:1 1 auto; min-width:0; white-space:nowrap; overflow:hidden;
     text-overflow:ellipsis}
-  .srow .val{white-space:nowrap}
-  .srow .val{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums;
-    font-weight:600; font-size:12px}
+  .srow .val{white-space:nowrap; font-family:"IBM Plex Mono",monospace;
+    font-variant-numeric:tabular-nums; font-weight:600; font-size:12px}
   .srow.zero{opacity:.4}
   .srow.zero .val{font-weight:400}
   .srow.blocked .val{color:var(--warn); font-weight:500; font-size:10.5px; text-transform:uppercase;
@@ -418,14 +417,13 @@
     flex:none; min-width:22px; text-align:right; font-variant-numeric:tabular-nums}
   .skl > .src .sn{flex:1 1 auto; min-width:0; overflow:hidden;
     text-overflow:ellipsis; white-space:nowrap}
-  /* The rank is the EFFECTIVE one; accented when gear is carrying part of it, so a
-     number that disagrees with the game's skill window explains itself. */
-  /* "16 (+3)" -- the rank paid for and the gear on top of it, not their sum. Wide
-     enough for a two-digit rank and a two-digit bonus so the names stay aligned. */
-  .skl .r{flex:none; min-width:46px; text-align:right}
   .skl .r.up{color:var(--accent)}
   .skl .r .up{color:var(--accent)}
-  .skl{display:flex; gap:6px; align-items:baseline; font-size:11.5px; padding:1px 0}
+  /* ⚠️ BLOCK, NOT FLEX. This carried the old row's `display:flex` from before a
+     skill became a <details>, so the disclosure itself was a flex container and
+     its source list sat BESIDE the summary instead of under it. The summary is
+     the flex row now; the details must stack. */
+  .skl{font-size:11.5px; padding:1px 0}
   .skl .sname{flex:1 1 auto; min-width:0; white-space:nowrap; overflow:hidden;
     text-overflow:ellipsis}
   /* Same contract as the sheet's icon, and now the same construction: a FIXED
@@ -452,8 +450,15 @@
      before it. */
   .over{color:var(--faint); font-size:10.5px; font-family:"IBM Plex Mono",monospace;
     margin-left:3px; font-variant-numeric:tabular-nums}
+  /* ONE RULE FOR THE RANK. There were two, and this later one's min-width:17px
+     silently beat the 46px set above it -- same specificity, last wins -- so the
+     column sized for "16 (+3)" never took effect. Merged rather than reordered:
+     two rules for one thing is how that happens.
+     "16 (+3)" is the rank the points bought and what gear adds, so the width has
+     to hold a two-digit rank and a two-digit bonus and keep the names aligned. */
   .skl .r{font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--accent);
-    font-variant-numeric:tabular-nums; min-width:17px; text-align:right; font-weight:600}
+    font-variant-numeric:tabular-nums; flex:none; min-width:46px; text-align:right;
+    font-weight:600}
 
   /* ---------- equipment ---------- */
   .rows{display:flex; flex-direction:column}
