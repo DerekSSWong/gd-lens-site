@@ -204,22 +204,29 @@
      moves the row when the glyph's ascent changes, and a fixed-height box still
      shifts the baseline it aligns on. Out of flow, the row's height is the text's
      height and nothing the icon does can move it.
-     A fixed px line-height (not a multiplier) is what keeps the glyph itself from
-     riding up as its font-size grows.
 
-     ⚠️ THE LINE-HEIGHT IS 6px LARGER THAN THE BOX ON PURPOSE. That drops the
-     glyph 3px -- half the difference -- onto the optical centre of the number to
-     its left. It is a hand-tuned nudge, not a derived value: ★ and ● are almost
-     certainly not in IBM Plex Mono at all, so they render from a fallback face
-     whose metrics this page cannot know. Shifting the GLYPH via line-height
-     rather than the BOX via `top` is what keeps the 21px hit area sitting over
-     its own row instead of hanging into the next one. */
-  .srowwrap > .vi{position:absolute; right:0; top:2px; width:22px; height:21px;
+     ⚠️ STRETCHED AND CENTRED, NOT HAND-TUNED. This was `top:2px; height:21px;
+     line-height:30px` -- three magic numbers that were nudged twice and were
+     wrong both times, because a single fixed line-height gives each glyph SIZE a
+     different half-leading and therefore a different baseline:
+
+         row content   2px pad + 12px x 1.45 + 2px pad          = 21.4px
+         icon box      top 2 + height 21                        = 2..23px, 1.6px
+                                                                  past the row,
+                                                                  onto the border
+         value baseline  2 + (17.4-12)/2 + ascent               ~ 14.3px
+         star baseline   2 + (30-19)/2   + ascent               ~ 22.7px
+         dot / minus                                            ~ 20.6 / 21.8px
+
+     So the glyphs sat 6-8px BELOW the number they answer to, and 2px apart from
+     each other. `top:0; bottom:0` makes the box exactly the row's content height
+     -- it can no longer overhang the border at any font-size -- and centring the
+     glyph in it removes the dependence on font metrics this page cannot know
+     (a star and a filled circle almost certainly render from a fallback face).
+     Nothing here needs tuning again when a size changes. */
+  .srowwrap > .vi{position:absolute; right:0; top:0; bottom:0; width:22px;
     appearance:none; background:none; border:0; padding:0;
-    /* 30px, not 27: the glyphs sat a touch high against the value to their left.
-       Nudged via LINE-HEIGHT for the reason above -- moving `top` would drag the
-       21px hit area down into the next row. */
-    text-align:center; line-height:30px;
+    display:flex; align-items:center; justify-content:center; line-height:1;
     font-family:"IBM Plex Mono",monospace; cursor:pointer;
     color:var(--faint); user-select:none; -webkit-user-select:none}
   /* Sized PER GLYPH, not once for all three. A star, a filled circle and a minus
@@ -229,7 +236,7 @@
   .srowwrap > .vi.v-nice{color:var(--dim); font-size:12px}
   /* The minus is a hairline at any weight this font offers, so it is thickened
      with a shadow above and below rather than by scaling the element -- a
-     transform would scale the 21px box too and overlap the rows either side. */
+     transform would scale the hit area too and overlap the rows either side. */
   .srowwrap > .vi.v-ignore{color:var(--faint); font-size:16px; font-weight:700;
     text-shadow:0 1px 0 currentColor, 0 -1px 0 currentColor}
   .srowwrap > .vi:hover{color:var(--ink)}
@@ -282,14 +289,18 @@
   .skl{display:flex; gap:6px; align-items:baseline; font-size:11.5px; padding:1px 0}
   .skl .sname{flex:1 1 auto; min-width:0; white-space:nowrap; overflow:hidden;
     text-overflow:ellipsis}
-  /* Same contract as the sheet's icon: a FIXED box, so cycling a verdict cannot
-     change the row's height. 16px sits inside the 11.5px text's own line box, so
-     the icon never drives the row -- and align-self keeps it off the baseline,
-     which would otherwise move as the glyph's size changes. */
+  /* Same contract as the sheet's icon, and now the same construction: a FIXED
+     box so cycling a verdict cannot change the row's height, with the glyph
+     CENTRED in it rather than placed by a hand-picked line-height. 16px sits
+     inside the 11.5px text's own line box, so the icon never drives the row, and
+     align-self keeps it off the baseline, which would otherwise move as the
+     glyph's size changes.
+     Centring is what makes the three sizes concentric: a fixed line-height gives
+     each font-size a different half-leading, which is exactly how the sheet's
+     icons ended up 2px apart from each other and 6px below their number. */
   .skl .vi{flex:none; align-self:center; appearance:none; background:none; border:0;
-    /* 16px, not 19: these sat low against the skill name. Same lever as the
-       sheet's icon and for the same reason -- the box stays put, the glyph moves. */
-    padding:0; width:18px; height:16px; line-height:16px; text-align:center;
+    padding:0; width:18px; height:16px; line-height:1;
+    display:flex; align-items:center; justify-content:center;
     cursor:pointer; font-family:"IBM Plex Mono",monospace; color:var(--faint);
     user-select:none; -webkit-user-select:none}
   .skl .vi.v-priority{color:var(--accent); font-size:15px}
