@@ -391,9 +391,17 @@
      flat auto-fill of every invested skill sorted by rank, which put Necromancer
      skills under the Berserker bar and back again -- the two lists were adjacent
      and unrelated. Grouping is by the skill's playerclassNN path; see masteryOf(). */
-  .skill-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  /* WIDE ENOUGH FOR THE LONGEST SKILL NAME IN THE GAME, on one line: "Maiven's
+     Sphere of Protection" at 29 characters, measured over all 353 playerclass
+     skills. 29ch of the 11.5px body face plus the rank column, the icon and their
+     gaps. Narrower and `Summon Blight Fiend` was already ellipsised; auto-fit
+     drops to a single column rather than truncating when the rail cannot hold two. */
+  .skill-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(252px,1fr));
     gap:10px}
-  .mastery{min-width:0}
+  /* min-width:0 on BOTH -- a grid item defaults to min-width:auto and refuses to
+     shrink below its content, which is what let a long name and an expanded
+     source line spill out of the column and over the one beside it. */
+  .mastery{min-width:0; overflow:hidden}
   /* A DISCLOSURE, like a sheet row: the rank a skill runs at is a sum, and the
      parts of it (points spent, gear's +N, a mastery-wide bonus) are worth reading
      for the same reason a stat's sources are. */
@@ -404,13 +412,19 @@
   .skl .bx{font-size:9px; color:var(--warn); font-family:"IBM Plex Mono",monospace;
     letter-spacing:.04em; flex:none}
   .skl > .src{margin:0 0 3px 17px; padding:0; list-style:none}
-  .skl > .src li{display:flex; gap:6px; font-size:10.5px; color:var(--dim)}
+  .skl > .src li{display:flex; gap:6px; font-size:10.5px; color:var(--dim);
+    min-width:0}
   .skl > .src .sv{font-family:"IBM Plex Mono",monospace; color:var(--accent);
-    min-width:22px; text-align:right; font-variant-numeric:tabular-nums}
-  .skl > .src .sn{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+    flex:none; min-width:22px; text-align:right; font-variant-numeric:tabular-nums}
+  .skl > .src .sn{flex:1 1 auto; min-width:0; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap}
   /* The rank is the EFFECTIVE one; accented when gear is carrying part of it, so a
      number that disagrees with the game's skill window explains itself. */
+  /* "16 (+3)" -- the rank paid for and the gear on top of it, not their sum. Wide
+     enough for a two-digit rank and a two-digit bonus so the names stay aligned. */
+  .skl .r{flex:none; min-width:46px; text-align:right}
   .skl .r.up{color:var(--accent)}
+  .skl .r .up{color:var(--accent)}
   .skl{display:flex; gap:6px; align-items:baseline; font-size:11.5px; padding:1px 0}
   .skl .sname{flex:1 1 auto; min-width:0; white-space:nowrap; overflow:hidden;
     text-overflow:ellipsis}
@@ -3036,11 +3050,14 @@ function render(save, fileName, isDemo) {
         var d = document.createElement('details');
         d.className = 'skl' + (det.sources.length ? '' : ' inert');
         var sum = document.createElement('summary');
-        var r = text('span', 'r', String(det.effective));
-        /* Marked when gear is carrying it, so the number that disagrees with the
-           game's skill window is explained where it is shown rather than only
-           inside the disclosure. */
-        if (det.effective !== det.invested) r.className = 'r up';
+        /* "16 (+3)": the rank the points bought, and what gear adds on top. The
+           sum alone (19) disagrees with the game's own skill window and says
+           nothing about which half is which; the two numbers together are what a
+           reader can check against the screen. */
+        var r = text('span', 'r', String(det.invested));
+        if (det.effective !== det.invested) {
+          r.appendChild(text('span', 'up', ' (+' + (det.effective - det.invested) + ')'));
+        }
         sum.appendChild(r);
         sum.appendChild(text('span', 'sname', nm));
         if (det.cap && det.effective > det.cap) {
