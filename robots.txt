@@ -1,0 +1,8 @@
+# Unlisted, not private. This keeps the page out of search results for crawlers
+# that honour robots.txt; index.html carries the matching <meta name="robots">.
+#
+# It is not access control. Anyone with the link can open the page, and this repo
+# is public, so its contents are readable regardless. A crawler that ignores these
+# rules is not stopped by them.
+User-agent: *
+Disallow: /
