@@ -205,58 +205,54 @@
      shifts the baseline it aligns on. Out of flow, the row's height is the text's
      height and nothing the icon does can move it.
 
-     ⚠️ ANCHORED TO THE TEXT'S BASELINE, NOT CENTRED IN THE ROW. Centring was the
-     second wrong answer: `align-items:center` centres the EM BOX, and an em box
-     reserves descender space below the baseline (~0.2em) that a star never uses.
-     The ink sits on and above the baseline, so centring the box lifts the visible
-     glyph by about half that unused descent -- ~3.6px for the 19px star, which is
-     exactly what it looked like.
+     ⚠️ THE OFFSETS ARE MEASURED, NOT REASONED. Three attempts to place these
+     glyphs by arithmetic all failed, each in a different direction, because each
+     assumed the conventional 0.8em/0.2em ascent and descent for faces nobody had
+     checked. Every one of those assumptions is wrong here:
 
-     The row has two different reference lines and the glyph must use the second:
+       the row's text  IBM Plex Mono, ascent 1.083em -- so the row bottom is
+                       6.2px above the text baseline, not the 7.1px assumed
+       the star        falls back to DejaVu SANS, ink bottom +1.0px BELOW its
+                       own baseline
+       dot and minus   fall back to DejaVu Sans MONO, ink bottoms +1.0 and +0.0
 
-         row bottom                                        21.4px
-         text baseline -- where "48%" actually ends         14.3px
-         em-box centre -- where centring put the star       10.7px
+     They are three FACES, not three sizes of one face, so no single declaration
+     can place all three -- which is why --vi-ink is per glyph and why that is not
+     the hand-tuning this comment used to warn against. tools/measure_icon_offsets.py
+     computes every number below from the actual font files; run it and paste.
 
-     So the glyph is bottom-aligned and pushed up to the baseline instead. The
-     offset is DERIVED from the row's own box model, not measured off a screen:
+         padding-bottom = (row bottom -> text baseline) - (line-box bottom -> ink)
+                        =        --vi-baseline          -        --vi-ink
 
-         row bottom -> baseline = summary padding-bottom  2px
-                                + half-leading (1.45-1)/2 x 12px   2.7px
-                                + descent 0.2 x 12px               2.4px
-                                                                 = 7.1px
+     The text's ink bottom IS its baseline ("48%" measures +0.00), so matching ink
+     bottoms is what puts the glyph's foot on the number's foot -- the actual goal,
+     and one that baseline alignment alone cannot reach for a star whose ink does
+     not start at its baseline.
 
-     and the glyph's own descent is subtracted in `em`, which resolves against
-     each glyph's OWN font-size -- so the star at 19px, the minus at 16px and the
-     dot at 12px all land on the same baseline with one declaration and no
-     per-glyph tuning.
-
-     ⚠️ 0.2em IS THE ONE ASSUMPTION LEFT. It is the conventional descent ratio,
-     not a metric this page can read: the star and the filled circle almost
-     certainly come from a fallback face. If a glyph still reads high or low,
-     --vi-descent is the single knob, and it is wrong for all three together or
-     for none -- which is the failure mode worth having.
+     ⚠️ MEASURED AGAINST THIS MACHINE'S FALLBACKS. A browser that resolves U+2605
+     to another face lands slightly off. That is inherent to using a text glyph as
+     an icon; inline SVG is what removes the dependency, and is the fix to make if
+     this drifts again.
 
      The BOX still spans the whole row (top:0; bottom:0) so the click target keeps
-     its full height and cannot overhang the border; only the glyph inside it
-     moves. */
-  .srowwrap{--vi-baseline:calc(2px + (1.45 - 1) * 12px / 2 + 0.2 * 12px);
-            --vi-descent:0.2em}
+     its full height and cannot overhang the border; only the glyph inside moves. */
+  .srowwrap{--vi-baseline:6.2px}
   .srowwrap > .vi{position:absolute; right:0; top:0; bottom:0; width:22px;
     appearance:none; background:none; border:0; padding:0;
     display:flex; align-items:flex-end; justify-content:center; line-height:1;
-    padding-bottom:calc(var(--vi-baseline) - var(--vi-descent));
+    padding-bottom:calc(var(--vi-baseline) - var(--vi-ink));
     font-family:"IBM Plex Mono",monospace; cursor:pointer;
     color:var(--faint); user-select:none; -webkit-user-select:none}
   /* Sized PER GLYPH, not once for all three. A star, a filled circle and a minus
      carry wildly different visual weight at the same font-size -- matching them
      by eye is the only thing that makes the three read as one scale. */
-  .srowwrap > .vi.v-priority{color:var(--accent); font-size:19px}
-  .srowwrap > .vi.v-nice{color:var(--dim); font-size:12px}
+  .srowwrap > .vi.v-priority{color:var(--accent); font-size:19px; --vi-ink:2.0px}
+  .srowwrap > .vi.v-nice{color:var(--dim); font-size:12px; --vi-ink:0.5px}
   /* The minus is a hairline at any weight this font offers, so it is thickened
      with a shadow above and below rather than by scaling the element -- a
      transform would scale the hit area too and overlap the rows either side. */
   .srowwrap > .vi.v-ignore{color:var(--faint); font-size:16px; font-weight:700;
+    --vi-ink:2.5px;
     text-shadow:0 1px 0 currentColor, 0 -1px 0 currentColor}
   .srowwrap > .vi:hover{color:var(--ink)}
   /* A priority row should be findable while scanning a 153-row sheet. */
