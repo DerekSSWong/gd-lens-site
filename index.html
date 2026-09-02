@@ -79,9 +79,18 @@
     border:1px solid var(--line-hi); background:var(--accent-soft); font-size:12px; color:var(--ink)}
   .demobar .dot{width:6px; height:6px; background:var(--accent); flex:none}
   .demobar b{font-weight:600}
-  .linkbtn{margin-left:auto; font:600 11px "IBM Plex Mono",monospace; letter-spacing:.06em;
+  .linkbtn{font:600 11px "IBM Plex Mono",monospace; letter-spacing:.06em;
     text-transform:uppercase; color:var(--accent); background:none; border:0; padding:1px 2px;
     cursor:pointer; text-decoration:underline; text-underline-offset:2px}
+  /* The FIRST control takes the auto margin, so the group sits right and the ones
+     after it sit beside it. `margin-left:auto` on every button pushed each onto
+     its own far edge and spread them across the header. */
+  .linkbtn ~ .linkbtn{margin-left:10px}
+  .panel-hd > .linkbtn:first-of-type{margin-left:auto}
+  /* Reset is always present now, so it needs a resting state for "nothing to
+     undo" -- dimmed in place rather than hidden, which would move the control
+     beside it every time the last override was cleared. */
+  .linkbtn.inert{color:var(--faint); text-decoration:none; cursor:default}
 
   /* ---------- verification strip ---------- */
   .verify{display:flex; flex-wrap:wrap; gap:5px; align-items:center;
@@ -464,9 +473,12 @@
            as the width allows, which is what actually kills the scrolling. -->
       <div class="main">
       <section class="panel hidden" id="computed">
-        <div class="panel-hd">
+        <!-- The controls (reset icons, download loot filter) are appended HERE by
+             ui.js, so this carries an id of its own. It used to anchor off
+             #computednote's parentNode -- a tally span that has since been removed,
+             which would have taken the controls with it. -->
+        <div class="panel-hd" id="computedhd">
           <h2>Character sheet</h2>
-          <span class="note" id="computednote"></span>
         </div>
         <div class="panel-bd">
           <div class="buffbar" id="buffs"></div>
@@ -2222,7 +2234,17 @@ function repaintAll() {
 /* The icon. Its class string is BUILT, not a literal, so the style gate
    reads whole class names off the stylesheet rather than the "v-" fragment
    a literal would leave behind in the source. */
-function vicon(vk, verd, computedV) {
+/* `onChange` is how a cycled icon reaches the LOOT FILTER, and leaving it out is
+   what broke the merged control: filterState is collected while paintSheet runs,
+   clicking an icon does NOT repaint the sheet, so the download was graded against
+   the verdicts as they stood when the page loaded. The gate caught it (X22b); a
+   reader would have seen a file that silently ignored every icon they set.
+
+   A callback rather than a write inside step(), because the two surfaces store
+   their answer differently: the sheet keys on section/label, the skill list on
+   the skill's RECORD path, which is what the affix corpus joins on and which
+   step() has no way to know. */
+function vicon(vk, verd, computedV, onChange) {
   // A real <button>: it is a control, so it should be one -- that gives it
   // keyboard focus and a visible focus ring for free, neither of which a
   // span with a click handler ever had.
@@ -2238,7 +2260,16 @@ function vicon(vk, verd, computedV) {
     // than pinning it, so returning a row to the algorithm needs no
     // separate gesture.
     if (next === computedV) delete overrides[vk]; else overrides[vk] = next;
+    if (onChange) onChange(next);
     saveOverrides();
+    /* The filter on the button is now stale: it was graded before this click.
+       Resetting the label is what stops "Loot filter - 423 graded" sitting there
+       describing a set of icons the reader has since changed. */
+    var fb = el('vfilter');
+    /* `.title = ''` rather than removeAttribute, matching how the button SETS it
+       a few lines down -- one accessor for one property, and the DOM stub the
+       control gate drives models properties, not the full attribute API. */
+    if (fb) { fb.textContent = 'Download loot filter'; fb.title = ''; }
     node.textContent = VGLYPH[next];
     node.className = vclass(next);
     node.setAttribute('aria-label', next);
@@ -2258,66 +2289,29 @@ function vicon(vk, verd, computedV) {
   return node;
 }
 
-/* Shown only while something is overridden. Without it a reader who has set
-   forty rows by hand has no way back short of clicking each one. */
+/* ALWAYS VISIBLE, not only while something is overridden. It used to appear on
+   the first hand-set icon and vanish again on reset, which made a control that
+   exists to undo a mistake itself appear and disappear -- and gave no hint that
+   the icons were adjustable at all until you had already adjusted one. It reads
+   its own count instead, and does nothing when there is nothing to undo. */
 function paintReset() {
-  var hd = el('computednote').parentNode, n = Object.keys(overrides).length;
+  var hd = el('computedhd'), n = Object.keys(overrides).length;
   var btn = el('vreset');
   if (!btn && hd) {
     btn = document.createElement('button');
     btn.className = 'linkbtn'; btn.id = 'vreset'; btn.type = 'button';
     btn.addEventListener('click', function () {
+      if (!Object.keys(overrides).length) return;
       overrides = {}; saveOverrides(); repaintAll();
     });
     hd.appendChild(btn);
   }
   if (btn) {
-    btn.textContent = 'Reset ' + n + ' icon' + (n === 1 ? '' : 's');
-    btn.classList.toggle('hidden', n === 0);
-  }
-  paintExport(n);
-}
-
-/* EXPORT THE ICONS, so the loot filter can be built from them.
-   raynbow.py grades every affix against what this character wants, and what it
-   wants is these icons -- but they live in localStorage, which nothing outside
-   the browser can read. There is no server and the page is a file:// document.
-   So the handoff is explicit: this writes the delta to a file the builder reads.
-
-   A DELTA, NOT A VERDICT SET. Cycling an icon back onto the engine's own answer
-   deletes the entry (see step()), so a row absent here means "the engine was
-   right", never "ignore". The builder recomputes the engine's answers from the
-   save and applies this on top; shipping a full set instead would freeze today's
-   engine into a file that outlives it. */
-function paintExport(n) {
-  var hd = el('computednote').parentNode;
-  var btn = el('vexport');
-  if (!btn && hd) {
-    btn = document.createElement('button');
-    btn.className = 'linkbtn'; btn.id = 'vexport'; btn.type = 'button';
-    btn.addEventListener('click', function () {
-      var doc = {
-        tool: 'gd-lens', kind: 'verdict-overrides', version: 1,
-        character: overrideChar, overrides: overrides
-      };
-      var url = URL.createObjectURL(
-        new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' }));
-      var a = document.createElement('a');
-      a.href = url;
-      a.download = 'gdlens-verdicts-' + (overrideChar || 'unnamed') + '.json';
-      a.click();
-      /* Revoked on the next frame, not immediately: the click is synchronous but
-         the fetch the browser starts for it is not, and revoking in the same tick
-         cancels the download in some builds. */
-      setTimeout(function () { URL.revokeObjectURL(url); }, 0);
-    });
-    hd.appendChild(btn);
-  }
-  if (btn) {
-    btn.textContent = 'Export verdicts';
-    btn.title = 'Save the ' + n + ' icon' + (n === 1 ? '' : 's') +
-      ' you set by hand, for: python3 raynbow.py <save.gdc> --overrides <file>';
-    btn.classList.toggle('hidden', n === 0);
+    btn.textContent = n ? 'Reset ' + n + ' icon' + (n === 1 ? '' : 's') : 'Reset icons';
+    /* Dimmed rather than hidden when there is nothing to reset: the control stays
+       where the reader last saw it instead of moving the ones beside it. */
+    btn.classList.toggle('inert', n === 0);
+    btn.setAttribute('aria-disabled', String(n === 0));
   }
   paintFilterBtn();
 }
@@ -2326,14 +2320,20 @@ function paintExport(n) {
    suffix in the game, coloured by what it is worth TO THIS CHARACTER, in the file
    Grim Dawn reads to paint item names.
 
-   Always shown, unlike the two controls above -- it needs no hand-set icons, only
-   a character. It grades against filterState, so whatever the icons currently say
-   is what comes out.
+   ⚠️ THIS IS ALSO WHAT "EXPORT VERDICTS" USED TO BE FOR, and the two are one
+   control since 2026-09-02. The export existed to carry the icons out to
+   raynbow.py, because the grading only ran in Python; now the scorer runs in the
+   page and grades against `filterState`, which is collected as the sheet paints
+   and already carries every hand-set icon. So the icons reach the filter with no
+   file in between -- change an icon, press this, and the download reflects it.
+   raynbow.py keeps --overrides for scripted use against a save on disk.
+
+   Always shown: it needs no hand-set icons, only a character.
 
    The work happens on click, not on load: decoding the corpus and scoring 5,828
    records is half a second nobody should pay for unless they want the file. */
 function paintFilterBtn() {
-  var hd = el('computednote').parentNode;
+  var hd = el('computedhd');
   if (!hd || !window.GDAffixes) return;
   var btn = el('vfilter');
   if (!btn) {
@@ -2352,8 +2352,10 @@ function paintFilterBtn() {
         var a = document.createElement('a');
         a.href = url; a.download = 'tagsgdx3_uimain.txt'; a.click();
         setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+        var n = Object.keys(overrides).length;
         btn.textContent = 'Loot filter \u00b7 ' + res.graded + ' graded';
         btn.title = res.affix + ' affixes coloured for ' + (overrideChar || 'this character')
+          + (n ? ' \u00b7 including your ' + n + ' hand-set icon' + (n === 1 ? '' : 's') : '')
           + ' \u00b7 install to <Grim Dawn>/settings/text_en/tagsgdx3_uimain.txt';
       }).catch(function (e) { btn.textContent = 'Filter failed: ' + e.message; });
     });
@@ -2361,8 +2363,8 @@ function paintFilterBtn() {
   }
   if (!/graded|Grading|failed|supported/.test(btn.textContent)) {
     btn.textContent = 'Download loot filter';
-    btn.title = 'Every affix coloured by its grade for this character, as a Grim '
-      + 'Raynbow text_en override';
+    btn.title = 'Every affix coloured by its grade for this character, your '
+      + 'hand-set icons included, as a Grim Raynbow text_en override';
   }
   btn.classList.toggle('hidden', !filterState.ready);
 }
@@ -2579,13 +2581,15 @@ function render(save, fileName, isDemo) {
            skills that ARE wanted, and a third value nothing reads would be fiction.
            Deleted rather than skipped, so cycling a skill back to ignore removes
            it instead of leaving the last value behind. */
-        var sv = overrides[vk] || computedV;
-        if (sv === 'ignore') delete filterState.skills[x.name];
-        else filterState.skills[x.name] = sv;
+        var setSkill = function (v) {
+          if (v === 'ignore') delete filterState.skills[x.name];
+          else filterState.skills[x.name] = v;
+        };
+        setSkill(overrides[vk] || computedV);
         var row = text('div', 'skl');
         row.appendChild(text('span', 'r', String(x.level)));
         row.appendChild(text('span', 'sname', nm));
-        row.appendChild(vicon(vk, overrides[vk] || computedV, computedV));
+        row.appendChild(vicon(vk, overrides[vk] || computedV, computedV, setSkill));
         list.appendChild(row);
       });
     }
@@ -2704,7 +2708,7 @@ function render(save, fileName, isDemo) {
      <details> so expanding it needs no JS state and stays keyboard-accessible. */
   if (window.GDStats && window.GD_SHEET) {
     window.GDStats.load().then(function (idx) {
-      if (!idx) { el('computednote').textContent = ''; return; }
+      if (!idx) { return; }
 
       /* Which buffs are running is an INPUT to every number below, so it lives in
          one place and the sheet is repainted from it. Defaults come from the engine
@@ -3086,7 +3090,9 @@ function render(save, fileName, isDemo) {
           // the contributor list underneath.
           var rw = text('div', 'srowwrap');
           rw.appendChild(d);
-          rw.appendChild(vicon(vk, verd, computedV));
+          rw.appendChild(vicon(vk, verd, computedV, function (v) {
+            filterState.verdicts[vk] = v;
+          }));
           wrap.appendChild(rw); shown++;
         });
         built.push({ node: wrap, weight: sec.rows.length + 2 });
@@ -3096,8 +3102,9 @@ function render(save, fileName, isDemo) {
       filterState.ready = true;
       paintReset();
       lastColumns = dealIntoColumns(box, built);
-      el('computednote').textContent = shown + ' stats · ' + (shown - blocked) +
-        ' derived · click any row for its sources';
+      // The "N stats - N derived - click any row for its sources" tally lived here
+      // and was removed 2026-09-02: it restated what the sheet in front of you
+      // already shows, and the disclosure hint is discoverable by clicking once.
       return pool;
       }
 
