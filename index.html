@@ -205,28 +205,47 @@
      shifts the baseline it aligns on. Out of flow, the row's height is the text's
      height and nothing the icon does can move it.
 
-     ⚠️ STRETCHED AND CENTRED, NOT HAND-TUNED. This was `top:2px; height:21px;
-     line-height:30px` -- three magic numbers that were nudged twice and were
-     wrong both times, because a single fixed line-height gives each glyph SIZE a
-     different half-leading and therefore a different baseline:
+     ⚠️ ANCHORED TO THE TEXT'S BASELINE, NOT CENTRED IN THE ROW. Centring was the
+     second wrong answer: `align-items:center` centres the EM BOX, and an em box
+     reserves descender space below the baseline (~0.2em) that a star never uses.
+     The ink sits on and above the baseline, so centring the box lifts the visible
+     glyph by about half that unused descent -- ~3.6px for the 19px star, which is
+     exactly what it looked like.
 
-         row content   2px pad + 12px x 1.45 + 2px pad          = 21.4px
-         icon box      top 2 + height 21                        = 2..23px, 1.6px
-                                                                  past the row,
-                                                                  onto the border
-         value baseline  2 + (17.4-12)/2 + ascent               ~ 14.3px
-         star baseline   2 + (30-19)/2   + ascent               ~ 22.7px
-         dot / minus                                            ~ 20.6 / 21.8px
+     The row has two different reference lines and the glyph must use the second:
 
-     So the glyphs sat 6-8px BELOW the number they answer to, and 2px apart from
-     each other. `top:0; bottom:0` makes the box exactly the row's content height
-     -- it can no longer overhang the border at any font-size -- and centring the
-     glyph in it removes the dependence on font metrics this page cannot know
-     (a star and a filled circle almost certainly render from a fallback face).
-     Nothing here needs tuning again when a size changes. */
+         row bottom                                        21.4px
+         text baseline -- where "48%" actually ends         14.3px
+         em-box centre -- where centring put the star       10.7px
+
+     So the glyph is bottom-aligned and pushed up to the baseline instead. The
+     offset is DERIVED from the row's own box model, not measured off a screen:
+
+         row bottom -> baseline = summary padding-bottom  2px
+                                + half-leading (1.45-1)/2 x 12px   2.7px
+                                + descent 0.2 x 12px               2.4px
+                                                                 = 7.1px
+
+     and the glyph's own descent is subtracted in `em`, which resolves against
+     each glyph's OWN font-size -- so the star at 19px, the minus at 16px and the
+     dot at 12px all land on the same baseline with one declaration and no
+     per-glyph tuning.
+
+     ⚠️ 0.2em IS THE ONE ASSUMPTION LEFT. It is the conventional descent ratio,
+     not a metric this page can read: the star and the filled circle almost
+     certainly come from a fallback face. If a glyph still reads high or low,
+     --vi-descent is the single knob, and it is wrong for all three together or
+     for none -- which is the failure mode worth having.
+
+     The BOX still spans the whole row (top:0; bottom:0) so the click target keeps
+     its full height and cannot overhang the border; only the glyph inside it
+     moves. */
+  .srowwrap{--vi-baseline:calc(2px + (1.45 - 1) * 12px / 2 + 0.2 * 12px);
+            --vi-descent:0.2em}
   .srowwrap > .vi{position:absolute; right:0; top:0; bottom:0; width:22px;
     appearance:none; background:none; border:0; padding:0;
-    display:flex; align-items:center; justify-content:center; line-height:1;
+    display:flex; align-items:flex-end; justify-content:center; line-height:1;
+    padding-bottom:calc(var(--vi-baseline) - var(--vi-descent));
     font-family:"IBM Plex Mono",monospace; cursor:pointer;
     color:var(--faint); user-select:none; -webkit-user-select:none}
   /* Sized PER GLYPH, not once for all three. A star, a filled circle and a minus
