@@ -315,6 +315,45 @@
   .buffnote{font-size:10.5px; color:var(--dim); margin:6px 0 0}
   .buffwarn{font-size:10.5px; color:var(--warn); margin:4px 0 0}
 
+  /* ---------- tabs + affix catalogue ---------- */
+  .tabs{display:flex; gap:0; margin-left:auto}
+  .tab{appearance:none; background:none; border:0; border-bottom:2px solid transparent;
+    padding:3px 10px; cursor:pointer; color:var(--dim);
+    font:600 11px "IBM Plex Mono",monospace; letter-spacing:.08em; text-transform:uppercase}
+  .tab.on{color:var(--ink); border-bottom-color:var(--accent)}
+  .tab:hover{color:var(--ink)}
+  .tab:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+
+  .agrades{display:flex; flex-direction:column; gap:14px}
+  .agrade{border-top:1px solid var(--line-hi); padding-top:6px}
+  .agh{display:flex; align-items:baseline; gap:8px; margin-bottom:3px}
+  .agh .grade{font-family:"Space Mono",monospace; font-weight:700; font-size:13px}
+  .agh .agn{font-size:10.5px; color:var(--faint)}
+  /* Same colour scale the loot filter writes, so a row here and a name in game
+     read as the same statement. */
+  .agh .grade.gS{color:var(--accent)}
+  .agh .grade.gA,.agh .grade.gB{color:var(--ink)}
+  .agh .grade.gC{color:var(--dim)}
+  .agh .grade.gF{color:var(--faint)}
+  .arow > summary{display:flex; align-items:baseline; gap:8px; padding:1px 0;
+    font-size:11.5px; cursor:pointer; list-style:none}
+  .arow > summary::-webkit-details-marker{display:none}
+  .arow .ak{font-family:"IBM Plex Mono",monospace; font-size:9px; color:var(--faint);
+    text-transform:uppercase; letter-spacing:.08em; flex:none; width:22px}
+  .arow .an{flex:1 1 auto; min-width:0; white-space:nowrap; overflow:hidden;
+    text-overflow:ellipsis}
+  .arow .atier{font-size:9px; font-family:"IBM Plex Mono",monospace; flex:none}
+  .arow .atier.t-green{color:var(--r-rare)}
+  .arow .atier.t-yellow{color:var(--r-magical)}
+  .arow .aratio,.arow .alvl{font-family:"IBM Plex Mono",monospace; font-size:10px;
+    color:var(--faint); flex:none; font-variant-numeric:tabular-nums}
+  .arow > .src{margin:0 0 4px 22px; padding:0; list-style:none}
+  .arow > .src li{display:flex; gap:6px; font-size:10.5px; color:var(--dim)}
+  .arow > .src .sv{font-family:"IBM Plex Mono",monospace; color:var(--accent);
+    min-width:52px; text-align:right; font-variant-numeric:tabular-nums; flex:none}
+  .arow > .src .sn{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .arow > .src .sn.dim{color:var(--faint)}
+
   /* ---------- verdict legend ---------- */
   .legend{display:flex; flex-wrap:wrap; align-items:center; gap:4px 14px;
     margin:0 0 10px; padding-bottom:8px; border-bottom:1px solid var(--line);
@@ -542,9 +581,16 @@
              #computednote's parentNode -- a tally span that has since been removed,
              which would have taken the controls with it. -->
         <div class="panel-hd" id="computedhd">
-          <h2>Character sheet</h2>
+          <!-- Two views of the same grading: the sheet says what this character
+               wants, the affix list says which affixes answer it. -->
+          <div class="tabs" id="tabs" role="tablist">
+            <button class="tab on" id="tab-sheet" type="button" role="tab"
+                    aria-selected="true" aria-controls="view-sheet">Character sheet</button>
+            <button class="tab" id="tab-affix" type="button" role="tab"
+                    aria-selected="false" aria-controls="view-affix">Affixes</button>
+          </div>
         </div>
-        <div class="panel-bd">
+        <div class="panel-bd" id="view-sheet" role="tabpanel">
           <!-- What the icons MEAN. They are a control as well as a readout and
                nothing on the page said what the three marks were; a reader had to
                click one to find out, which is a poor way to learn that clicking
@@ -554,6 +600,10 @@
           <div class="legend" id="legend"></div>
           <div class="buffbar" id="buffs"></div>
           <div id="sheet"></div>
+        </div>
+        <div class="panel-bd hidden" id="view-affix" role="tabpanel">
+          <p class="secnote" id="affixnote"></p>
+          <div class="agrades" id="affixlist"></div>
         </div>
       </section>
       </div>
@@ -2196,6 +2246,78 @@ root.GDStats = { load: load, statsOf: statsOf, rawIndex: function () { return IN
     return { best: best, spread: spread, units: Object.keys(units).length };
   }
 
+  /* ---- the catalogue: every affix in the filter, by grade -----------------
+     The filter is 481 coloured lines the reader cannot inspect in game. This is
+     the same grading, listed.
+
+     ⚠️ THE EFFECT LINES ARE PARTIAL AND SAY SO. load() keeps only fields some
+     sheet row can name, so `lines` (the record's true count) is usually larger
+     than the effects here. Reporting both is the honest form; printing the kept
+     ones as if they were all of them is not. */
+  function rollBand(v, jitter) {
+    if (!jitter) return [v, v];
+    var half = Math.floor(Math.abs(v) * jitter / 100);
+    return [v - half, v + half];
+  }
+
+  function effectsOf(rec) {
+    var labels = root.GD_FIELD_LABELS || {}, out = [];
+    rec[8].forEach(function (fv) {
+      var name = IDX.f[fv[0]], known = labels[name];
+      var band = rollBand(fv[1], rec[6]);
+      out.push({
+        field: name,
+        label: known ? known[0] : name,
+        pct: known ? known[1] : false,
+        lo: Math.round(band[0] * 10) / 10,
+        hi: Math.round(band[1] * 10) / 10
+      });
+    });
+    rec[9].forEach(function (sk) {
+      out.push({ field: IDX.kr[sk[0]], label: '+' + sk[2] + ' to ' + IDX.k[sk[1]],
+                 pct: false, lo: null, hi: null });
+    });
+    return out;
+  }
+
+  /* grade -> [affix], each the at-level pick of one (tag, slots, skills) unit.
+     Same units gradesByTag builds; this keeps the record so the page can show
+     what the affix actually does. */
+  function catalogue(verdicts, skills) {
+    var want = wantedFields(verdicts), units = {}, i;
+    for (i = 0; i < IDX.r.length; i++) {
+      var rec = IDX.r[i];
+      if (!Object.keys(match(rec, want, skills)).length) continue;
+      var mine = rec[9].filter(function (s) { return skills[IDX.kr[s[0]]]; })
+        .map(function (s) { return IDX.k[s[1]]; }).sort().join('|');
+      var k = rec[0] + '|' + rec[7] + '|' + mine;
+      (units[k] = units[k] || []).push(rec);
+    }
+    var order = gradeOrder(), by = {};
+    order.forEach(function (g) { by[g] = []; });
+    Object.keys(units).forEach(function (k) {
+      var recs = units[k], best = null, g = 'F';
+      recs.forEach(function (r) {
+        var gg = score(r, want, skills)[1];
+        if (order.indexOf(gg) > order.indexOf(g) || !best) { g = gg; best = r; }
+      });
+      var lv = recs.map(function (r) { return r[4]; });
+      by[g].push({
+        name: IDX.n[best[1]], kind: best[2] ? 'suffix' : 'prefix',
+        tier: best[3] ? 'green' : 'yellow',
+        slots: IDX.s[best[7]], lmin: Math.min.apply(null, lv), lmax: Math.max.apply(null, lv),
+        variants: recs.length, lines: best[5], useful: Object.keys(match(best, want, skills)).length,
+        effects: effectsOf(best), grade: g
+      });
+    });
+    order.forEach(function (g) {
+      by[g].sort(function (a, b) {
+        return a.kind === b.kind ? a.name.localeCompare(b.name) : (a.kind < b.kind ? -1 : 1);
+      });
+    });
+    return by;
+  }
+
   /* ---- the filter -------------------------------------------------------- */
   var AFFIX_LINE = /^(tag(?:GDX\d)?(?:Prefix|Suffix)[^=]*)=\{\^(.)\}/;
 
@@ -2244,6 +2366,7 @@ root.GDStats = { load: load, statsOf: statsOf, rawIndex: function () { return IN
     wantedFields: wantedFields, grade: grade,
     gradeOrder: gradeOrder, thresholds: thresholds,
     recolour: recolour, template: template, buildFilter: buildFilter,
+    catalogue: catalogue, effectsOf: effectsOf, rollBand: rollBand,
     index: function () { return IDX; }
   };
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -2391,6 +2514,8 @@ function vicon(vk, verd, computedV, onChange) {
     if (next === computedV) delete overrides[vk]; else overrides[vk] = next;
     if (onChange) onChange(next);
     saveOverrides();
+    // The affix tab's grades are this character's wants; an icon just changed them.
+    invalidateAffixes();
     /* The filter on the button is now stale: it was graded before this click.
        Resetting the label is what stops "Loot filter - 423 graded" sitting there
        describing a set of icons the reader has since changed. */
@@ -2517,6 +2642,115 @@ function paintLegend() {
   });
   host.appendChild(text('span', 'lgh', 'click an icon to change it \u00b7 right click to go back'));
 }
+
+/* ---- the affix tab ------------------------------------------------------
+   Every affix the filter colours, grouped by the grade it was given. Built on
+   demand and once: scoring 5,828 records is half a second, and a reader who never
+   opens the tab should not pay it. Rebuilt when the icons change, because the
+   grades do. */
+var affixPainted = false;
+
+function invalidateAffixes() {
+  affixPainted = false;
+  if (el('tab-affix') && el('tab-affix').getAttribute('aria-selected') === 'true') paintAffixes();
+}
+
+function paintAffixes() {
+  var host = el('affixlist'), note = el('affixnote');
+  if (!host || !window.GDAffixes || !filterState.ready) return;
+  if (affixPainted) return;
+  affixPainted = true;
+  host.textContent = '';
+  note.textContent = 'Grading\u2026';
+  window.GDAffixes.load().then(function (idx) {
+    if (!idx) { note.textContent = 'Not supported in this browser.'; return; }
+    var by = window.GDAffixes.catalogue(filterState.verdicts, filterState.skills);
+    var order = window.GDAffixes.gradeOrder().slice().reverse();
+    var total = 0;
+    order.forEach(function (g) { total += by[g].length; });
+    note.textContent = total + ' affixes carry something this character wants, '
+      + 'graded exactly as the loot filter colours them. '
+      + 'An effect list shows only the lines the sheet can name.';
+    host.textContent = '';
+    order.forEach(function (g) {
+      var list = by[g];
+      if (!list.length) return;
+      var sec = text('div', 'agrade');
+      var hd = text('div', 'agh');
+      hd.appendChild(text('span', gclass(g), g));
+      hd.appendChild(text('span', 'agn', list.length + ' affix' + (list.length === 1 ? '' : 'es')));
+      sec.appendChild(hd);
+      list.forEach(function (a) { sec.appendChild(affixRow(a)); });
+      host.appendChild(sec);
+    });
+  }).catch(function (e) { note.textContent = 'Failed: ' + e.message; });
+}
+
+function affixRow(a) {
+  var d = document.createElement('details');
+  d.className = 'arow';
+  var sum = document.createElement('summary');
+  sum.appendChild(text('span', 'ak', a.kind === 'prefix' ? 'pre' : 'suf'));
+  sum.appendChild(text('span', 'an', a.name));
+  sum.appendChild(text('span', tierclass(a.tier), a.tier));
+  sum.appendChild(text('span', 'aratio', a.useful + '/' + a.lines));
+  sum.appendChild(text('span', 'alvl',
+    a.lmin === a.lmax ? String(a.lmin) : a.lmin + '\u2013' + a.lmax));
+  d.appendChild(sum);
+  var ul = document.createElement('ul'); ul.className = 'src';
+  a.effects.forEach(function (e) {
+    var li = document.createElement('li');
+    if (e.lo === null) {
+      li.appendChild(text('span', 'sv', ''));
+      li.appendChild(text('span', 'sn', e.label));
+    } else {
+      var v = e.lo === e.hi ? String(e.lo) : e.lo + '\u2013' + e.hi;
+      li.appendChild(text('span', 'sv', v + (e.pct ? '%' : '')));
+      li.appendChild(text('span', 'sn', e.label));
+    }
+    ul.appendChild(li);
+  });
+  if (a.lines > a.effects.length) {
+    var li2 = document.createElement('li');
+    li2.appendChild(text('span', 'sv', ''));
+    li2.appendChild(text('span', 'sn dim',
+      '+' + (a.lines - a.effects.length) + ' more line'
+      + (a.lines - a.effects.length === 1 ? '' : 's') + ' the sheet cannot name'));
+    ul.appendChild(li2);
+  }
+  var where = document.createElement('li');
+  where.appendChild(text('span', 'sv', ''));
+  where.appendChild(text('span', 'sn dim',
+    a.slots.length ? 'rolls on ' + a.slots.join(', ') : 'no drop source'));
+  ul.appendChild(where);
+  d.appendChild(ul);
+  return d;
+}
+
+function paintTabs() {
+  var bar = el('tabs');
+  if (!bar || bar._wired) return;
+  bar._wired = true;
+  [['tab-sheet', 'view-sheet'], ['tab-affix', 'view-affix']].forEach(function (pair) {
+    var b = el(pair[0]);
+    if (!b) return;
+    b.addEventListener('click', function () {
+      [['tab-sheet', 'view-sheet'], ['tab-affix', 'view-affix']].forEach(function (q) {
+        var on = q[0] === pair[0];
+        el(q[0]).classList.toggle('on', on);
+        el(q[0]).setAttribute('aria-selected', String(on));
+        el(q[1]).classList.toggle('hidden', !on);
+      });
+      if (pair[0] === 'tab-affix') paintAffixes();
+    });
+  });
+}
+
+/* BUILT, not concatenated at the call site: the style gate reads whole class
+   names out of literal strings, and 'grade g' + g leaves the fragment 'g' behind
+   for it to fail on. Same reason vclass() exists. */
+function gclass(g) { return 'grade g' + g; }
+function tierclass(t) { return 'atier t-' + t; }
 
 function vclass(verd) {
   return 'vi v-' + verd;
@@ -3342,6 +3576,7 @@ function render(save, fileName, isDemo) {
          built. Set BEFORE paintReset(), which is what paints the button. */
       filterState.ready = true;
       paintLegend();
+      paintTabs();
       paintReset();
       lastColumns = dealIntoColumns(box, built);
       // The "N stats - N derived - click any row for its sources" tally lived here
