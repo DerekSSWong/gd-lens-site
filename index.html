@@ -181,6 +181,10 @@
     text-overflow:ellipsis}
   .srow .val{white-space:nowrap; font-family:"IBM Plex Mono",monospace;
     font-variant-numeric:tabular-nums; font-weight:600; font-size:12px}
+  /* The surplus beside a capped resistance -- "80% (+37%)". Quieter than the
+     value it annotates: it is slack, not the number the game applies. */
+  .srow .over{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums;
+    font-size:10px; color:var(--faint); white-space:nowrap; flex:none}
   .srow.zero{opacity:.4}
   .srow.zero .val{font-weight:400}
   .srow.blocked .val{color:var(--warn); font-weight:500; font-size:10.5px; text-transform:uppercase;
@@ -691,7 +695,7 @@ window.GD_SHEET=[{"section":"Attributes","rows":[{"label":"Physique","kind":"com
 <script>
 /* Verdict targets -- ASSERTED, not derived. See targets.py, which
    carries the reasoning and the warning that goes with it. */
-window.GD_TARGETS={"sigma":25,"residual":0.11,"damageTypes":3,"damageFloor":0.05,"strongKinds":["skill","component","augment"],"corroboration":1,"petBuildDamage":250,"mechanismDominance":0.5,"skillSubtreeShare":0.25,"control":{"Stun Resist":60,"Freeze Resist":40,"Trap Resist":40,"Slow Resist":30,"Life Leech Resist":20,"Petrify Resist":0,"Sleep Resist":0,"Disruption Resist":0,"Energy Leech Resist":0,"Reflect Resist":0},"endgame":{"OffensiveAbility":2500,"DefensiveAbility":2600,"ArmorRating":2800,"Health":16000},"pct":{"PhysicalResist":28,"ChanceToBlock":60},"levelFloor":0.35,"diffScale":{"0":0.55,"1":0.78,"2":1.0},"verdictWeight":{"priority":4,"nice":1,"ignore":0},"coverageFloor":0.7,"gradeBands":["D","C","B","A"]};
+window.GD_TARGETS={"sigma":25,"residual":0.11,"damageTypes":3,"damageFloor":0.05,"strongKinds":["skill","component","augment"],"corroboration":1,"petBuildDamage":250,"mechanismDominance":0.5,"skillSubtreeShare":0.25,"control":{"Stun Resist":60,"Freeze Resist":40,"Trap Resist":40,"Slow Resist":30,"Life Leech Resist":20,"Petrify Resist":0,"Sleep Resist":0,"Disruption Resist":0,"Energy Leech Resist":0,"Reflect Resist":0},"endgame":{"OffensiveAbility":2500,"DefensiveAbility":2600,"ArmorRating":2800,"Health":16000},"pct":{"PhysicalResist":28,"ChanceToBlock":60},"levelFloor":0.35,"diffScale":{"0":0.55,"1":0.78,"2":1.0},"verdictWeight":{"priority":4,"nice":2,"ignore":0},"coverageFloor":0.7,"gradeBands":["D","C","B","A"]};
 </script>
 <script>
 /* field -> [label, isPercent] for the equipped-item popouts; see
@@ -3623,6 +3627,20 @@ function render(save, fileName, isDemo) {
           if (r.times) {
             (C[r.times] || []).forEach(function (c) { rows.push({ c: c, pct: true }); });
           }
+          /* THE DIFFICULTY PENALTY IS A CONTRIBUTION, and on Ultimate it is usually
+             the largest single one. Without it a Bleeding row summing 142 across
+             five items sits beside a value of 80 with nothing in the list that
+             accounts for the gap, and the breakdown stops explaining the number.
+             It comes from resistances(), never from a penalty table repeated here:
+             Physical is exempt and Normal takes none, so both add no line without
+             this code knowing which is which. `save.difficulty` is the parser's
+             own name for the difficulty -- see DIFFICULTY in parser.js. */
+          var rr = (r.kind === 'computed' && r.compute.indexOf('resist:') === 0)
+            ? resist[r.compute.split(':')[1]] : null;
+          if (rr && rr.penalty) {
+            rows.push({ c: { value: rr.penalty, kind: 'difficulty', record: '' }, pct: true,
+                        label: (save.difficulty || 'difficulty') + ' penalty' });
+          }
           var v = rowValue(r, T);
           var computedV = window.GDStats.verdict(sec.section, r, v, vctx);
           var vk = vkey(sec.section, r.label);
@@ -3661,9 +3679,8 @@ function render(save, fileName, isDemo) {
              the same `cap`.
              A SEPARATE span, never appended into `.val` -- the smoke test reads
              that text and diffs it against the Python engine. */
-          if (r.kind === 'computed' && r.compute.indexOf('resist:') === 0) {
-            var rr = resist[r.compute.slice(8)];
-            var over = rr ? Math.round(rr.raw + rr.penalty - rr.cap) : 0;
+          if (rr) {
+            var over = Math.round(rr.raw + rr.penalty - rr.cap);
             if (over > 0) sum.appendChild(text('span', 'over', '(+' + over + '%)'));
           }
           // An approximate row is shown but never passed off as confirmed.
@@ -3675,7 +3692,12 @@ function render(save, fileName, isDemo) {
             var ul = document.createElement('ul'); ul.className = 'src';
             rows.slice().sort(function (a, b) { return Math.abs(b.c.value) - Math.abs(a.c.value); })
               .forEach(function (row) {
-                var c = row.c, info = describe(c), li = document.createElement('li');
+                // A synthetic row (the difficulty penalty) names itself: it has no
+                // record for describe() to resolve, and would otherwise render as
+                // the bare word "Difficulty" with no context.
+                var c = row.c, info = row.label ? { name: row.label, ctx: c.kind }
+                                                : describe(c),
+                    li = document.createElement('li');
                 var n = Math.round(c.value * 10) / 10;
                 li.appendChild(text('span', 'sv',
                   (c.value > 0 ? '+' : '') + n + (row.pct ? '%' : '')));
