@@ -695,7 +695,7 @@ window.GD_SHEET=[{"section":"Attributes","rows":[{"label":"Physique","kind":"com
 <script>
 /* Verdict targets -- ASSERTED, not derived. See targets.py, which
    carries the reasoning and the warning that goes with it. */
-window.GD_TARGETS={"sigma":25,"residual":0.11,"damageTypes":3,"damageFloor":0.05,"strongKinds":["skill","component","augment"],"corroboration":1,"petBuildDamage":250,"mechanismDominance":0.5,"skillSubtreeShare":0.25,"control":{"Stun Resist":60,"Freeze Resist":40,"Trap Resist":40,"Slow Resist":30,"Life Leech Resist":20,"Petrify Resist":0,"Sleep Resist":0,"Disruption Resist":0,"Energy Leech Resist":0,"Reflect Resist":0},"endgame":{"OffensiveAbility":2500,"DefensiveAbility":2600,"ArmorRating":2800,"Health":16000},"pct":{"PhysicalResist":28,"ChanceToBlock":60},"levelFloor":0.35,"diffScale":{"0":0.55,"1":0.78,"2":1.0},"verdictWeight":{"priority":4,"nice":2,"ignore":0},"coverageFloor":0.7,"gradeBands":["D","C","B","A"]};
+window.GD_TARGETS={"sigma":25,"resistSigma":80,"residual":0.11,"damageTypes":3,"damageFloor":0.05,"strongKinds":["skill","component","augment"],"corroboration":1,"petBuildDamage":250,"mechanismDominance":0.5,"skillSubtreeShare":0.25,"control":{"Stun Resist":60,"Freeze Resist":40,"Trap Resist":40,"Slow Resist":30,"Life Leech Resist":20,"Petrify Resist":0,"Sleep Resist":0,"Disruption Resist":0,"Energy Leech Resist":0,"Reflect Resist":0},"endgame":{"OffensiveAbility":2500,"DefensiveAbility":2600,"ArmorRating":2800,"Health":16000},"pct":{"PhysicalResist":28,"ChanceToBlock":60},"levelFloor":0.35,"diffScale":{"0":0.55,"1":0.78,"2":1.0},"verdictWeight":{"priority":4,"nice":2,"ignore":0},"coverageFloor":0.7,"gradeBands":["D","C","B","A"]};
 </script>
 <script>
 /* field -> [label, isPercent] for the equipped-item popouts; see
@@ -2040,7 +2040,7 @@ function verdict(section, row, value, ctx) {
        figure carries a known residual, and Chaos computes exactly 80 against a
        cap of 80 on the reference Sentinel while reading 74 in game. */
     if (eff - r.raw * T.residual <= r.cap) return 'priority';
-    return eff < r.cap + T.sigma ? 'nice' : 'ignore';
+    return eff < r.cap + T.resistSigma ? 'nice' : 'ignore';
   }
 
   /* A row printed as 100 + bonus is judged on the bonus. */
@@ -2301,10 +2301,35 @@ root.GDStats = { load: load, statsOf: statsOf, rawIndex: function () { return IN
      sheet row can name, so `lines` (the record's true count) is usually larger
      than the effects here. Reporting both is the honest form; printing the kept
      ones as if they were all of them is not. */
-  function effectsOf(rec) {
-    var labels = root.GD_FIELD_LABELS || {}, out = [];
-    rec[8].forEach(function (fv) {
-      var name = IDX.f[fv[0]], known = labels[name];
+  /* ⚠️ PER LINE, ACROSS THE UNIT'S WHOLE LADDER -- not one record's lines.
+     A unit is one affix on one slot family at every level tier it has, and the
+     tiers are NOT a clean ladder: measured over the shipped corpus, 54 affix
+     names hold at least one line whose best roll is on a tier that is not the
+     top one (186 field-instances over 655 multi-record units), and 18 of those
+     are lines the top tier does not carry AT ALL. Duration modifiers are the
+     usual shape -- `Aetherfire` rolls 38% Fire duration at level 5 and 33% at
+     level 92, because the damage under it grew instead.
+
+     So showing any SINGLE record understates the affix, and which record you
+     pick only chooses how: the first (what this did before the level-tier fix)
+     understates 601 units, the top tier understates 54. Each line therefore
+     carries the best band the ladder offers for that line, and `lvl` says which
+     tier it came from so a mixed row cannot read as one item's roll.
+
+     Best is by `hi` -- the band is a column, so the pair is a real record's real
+     roll and never a synthetic min/max across tiers. */
+  function effectsOf(recs) {
+    var labels = root.GD_FIELD_LABELS || {}, out = [], byField = {}, i, j;
+    for (i = 0; i < recs.length; i++) {
+      for (j = 0; j < recs[i][8].length; j++) {
+        var fv = recs[i][8][j], cur = byField[fv[0]];
+        if (!cur || fv[3] > cur.hi || (fv[3] === cur.hi && fv[2] > cur.lo)) {
+          byField[fv[0]] = { lo: fv[2], hi: fv[3], lvl: recs[i][4] };
+        }
+      }
+    }
+    Object.keys(byField).forEach(function (fi) {
+      var name = IDX.f[fi], known = labels[name], b = byField[fi];
       /* lo/hi RIDE ON THE RECORD. There was a rollBand() here mirroring the
          Python one -- the last of the duplicated rules in this project. The
          band is a column of GD Catalogue's affix table now, computed once by
@@ -2313,13 +2338,18 @@ root.GDStats = { load: load, statsOf: statsOf, rawIndex: function () { return IN
         field: name,
         label: known ? known[0] : name,
         pct: known ? known[1] : false,
-        lo: Math.round(fv[2] * 10) / 10,
-        hi: Math.round(fv[3] * 10) / 10
+        lo: Math.round(b.lo * 10) / 10,
+        hi: Math.round(b.hi * 10) / 10,
+        lvl: b.lvl
       });
     });
+    /* Granted skills and the conversion come off the top tier alone: measured,
+       NO unit varies either across its ladder (0 of 655), so there is nothing to
+       take the best of and a merge here would be dead code pretending otherwise. */
+    var rec = recs.reduce(function (a, b) { return b[4] > a[4] ? b : a; });
     rec[9].forEach(function (sk) {
       out.push({ field: IDX.kr[sk[0]], label: '+' + sk[2] + ' to ' + IDX.k[sk[1]],
-                 pct: false, lo: null, hi: null });
+                 pct: false, lo: null, hi: null, lvl: rec[4] });
     });
     /* The conversion, which is ONE line and was shown as none. It cannot ride in
        rec[8] because two of its three parts are damage-type names rather than
@@ -2335,7 +2365,8 @@ root.GDStats = { load: load, statsOf: statsOf, rawIndex: function () { return IN
                  label: IDX.dt[rec[10][0]] + ' converted to ' + IDX.dt[rec[10][1]],
                  pct: true,
                  lo: Math.round(rec[10][3] * 10) / 10,
-                 hi: Math.round(rec[10][4] * 10) / 10 });
+                 hi: Math.round(rec[10][4] * 10) / 10,
+                 lvl: rec[4] });
     }
     return out;
   }
@@ -2356,18 +2387,49 @@ root.GDStats = { load: load, statsOf: statsOf, rawIndex: function () { return IN
     var order = gradeOrder(), by = {};
     order.forEach(function (g) { by[g] = []; });
     Object.keys(units).forEach(function (k) {
-      var recs = units[k], best = null, g = 'F';
+      var recs = units[k], best = null, bestG = 'F', g = 'F';
       recs.forEach(function (r) {
         var gg = score(r, want, skills)[1];
-        if (order.indexOf(gg) > order.indexOf(g) || !best) { g = gg; best = r; }
+        if (order.indexOf(gg) > order.indexOf(g)) g = gg;
+        /* THE TOP OF THE LADDER, NOT THE FIRST RECORD SEEN. The unit is already
+           one slot family (rec[7] is in the key), so its records differ only by
+           level tier -- and score() is magnitude-blind, so all four tiers of
+           `Sheltering` tie at D. The old `|| !best` therefore kept whichever
+           came first, which is the LOWEST tier: the row read 10-18% Cold Resist
+           beside an `lmin-lmax` of 0-50, while the level 50 record rolls 36-44%.
+           The displayed band is the best this slot family can roll; the grade
+           above is still the best any variant reaches, so neither is a tier's
+           accident. */
+        if (!best || r[4] > best[4] ||
+            (r[4] === best[4] && order.indexOf(gg) > order.indexOf(bestG))) {
+          best = r; bestG = gg;
+        }
       });
       var lv = recs.map(function (r) { return r[4]; });
+      /* THE UNIT'S LINES, not one record's -- effectsOf() merges the ladder, so
+         a count taken off a single record could be smaller than the list beside
+         it and turn the "+N the sheet cannot name" note negative. `useful` is
+         the union of the matches for the same reason: a line that only some tier
+         carries is still a line this affix can give you. */
+      var union = {};
+      recs.forEach(function (r) {
+        var m = match(r, want, skills);
+        Object.keys(m).forEach(function (k) { union[k] = 1; });
+      });
+      var eff = effectsOf(recs);
       by[g].push({
         name: IDX.n[best[1]], kind: best[2] ? 'suffix' : 'prefix',
+        /* THE TAG, because the NAME is not the unit. `Impervious` is four tags
+           over the same slot family, so a reader -- or a gate -- resolving a row
+           by name lands on whichever came first and reads the wrong ladder. The
+           Python twin's rows have carried it all along. */
+        tag: IDX.t[best[0]],
         tier: best[3] ? 'green' : 'yellow',
         slots: IDX.s[best[7]], lmin: Math.min.apply(null, lv), lmax: Math.max.apply(null, lv),
-        variants: recs.length, lines: best[5], useful: Object.keys(match(best, want, skills)).length,
-        effects: effectsOf(best), grade: g
+        variants: recs.length,
+        lines: Math.max.apply(null, recs.map(function (r) { return r[5]; })),
+        useful: Object.keys(union).length,
+        effects: eff, grade: g
       });
     });
     order.forEach(function (g) {
@@ -2833,6 +2895,14 @@ function affixRow(a) {
       var v = e.lo === e.hi ? String(e.lo) : e.lo + '\u2013' + e.hi;
       li.appendChild(text('span', 'sv', v + (e.pct ? '%' : '')));
       li.appendChild(text('span', 'sn', e.label));
+    }
+    /* THE TIER THIS BAND CAME FROM, and only when it is not the top of the
+       ladder. Each line shows the best roll the affix's tiers offer, and for 54
+       affix names that is NOT the highest-level record -- a duration modifier
+       shrinks as the damage under it grows. Without this the row would read as
+       one item's roll while quietly mixing two tiers. */
+    if (e.lvl != null && a.lmin !== a.lmax && e.lvl !== a.lmax) {
+      li.appendChild(text('span', 'sn dim', ' (best at lv ' + e.lvl + ')'));
     }
     ul.appendChild(li);
   });
