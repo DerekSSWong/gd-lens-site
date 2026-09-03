@@ -276,11 +276,18 @@
   .srowwrap > .vi.v-ignore{color:var(--faint); font-size:16px; font-weight:700;
     --vi-ink:2.5px;
     text-shadow:0 1px 0 currentColor, 0 -1px 0 currentColor}
+  /* The cross is the only mark on the scale that is not a quieter or louder
+     version of the star: it points the other way, so it takes the one colour the
+     palette already reserves for a bad number rather than a shade of --accent.
+     Sized down from the star -- it is emphatic enough by being red, and matching
+     the star's 19px made it shout over a sheet where most rows are not avoided. */
+  .srowwrap > .vi.v-avoid{color:var(--bad); font-size:14px; font-weight:700; --vi-ink:1.5px}
   .srowwrap > .vi:hover{color:var(--ink)}
   /* A priority row should be findable while scanning a 153-row sheet. */
   .srow.v-priority > summary .lbl{color:var(--ink); font-weight:600}
   .srow.v-nice > summary .lbl{color:var(--ink)}
   .srow.v-ignore > summary .lbl{color:var(--dim)}
+  .srow.v-avoid > summary .lbl{color:var(--bad)}
   .src{list-style:none; margin:0 0 6px; padding:1px 0 1px 16px; display:flex; flex-direction:column; gap:1px}
   .src li{display:flex; gap:7px; align-items:baseline; font-size:11px; color:var(--dim)}
   .src .sv{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums;
@@ -373,6 +380,7 @@
   .lgi.v-nice{color:var(--accent-mute); font-size:11px}
   .lgi.v-ignore{color:var(--faint); font-size:14px; font-weight:700;
     text-shadow:0 1px 0 currentColor, 0 -1px 0 currentColor}
+  .lgi.v-avoid{color:var(--bad); font-size:12px; font-weight:700}
   .lgt{white-space:nowrap}
   .lgh{margin-left:auto; color:var(--faint); font-size:10px}
 
@@ -450,6 +458,7 @@
   .skl .vi.v-nice{color:var(--accent-mute); font-size:10px}
   .skl .vi.v-ignore{color:var(--faint); font-size:13px; font-weight:700;
     text-shadow:0 1px 0 currentColor, 0 -1px 0 currentColor}
+  .skl .vi.v-avoid{color:var(--bad); font-size:11px; font-weight:700}
   .skl .vi:hover{color:var(--ink)}
   /* The overcap beside a capped resistance: 80% (+17%). Dim and smaller, because
      it is the part you can afford to LOSE -- the number that matters is the one
@@ -695,7 +704,7 @@ window.GD_SHEET=[{"section":"Attributes","rows":[{"label":"Physique","kind":"com
 <script>
 /* Verdict targets -- ASSERTED, not derived. See targets.py, which
    carries the reasoning and the warning that goes with it. */
-window.GD_TARGETS={"sigma":25,"resistSigma":80,"residual":0.11,"damageTypes":3,"damageFloor":0.05,"strongKinds":["skill","component","augment"],"corroboration":1,"petBuildDamage":250,"mechanismDominance":0.5,"skillSubtreeShare":0.25,"control":{"Stun Resist":60,"Freeze Resist":40,"Trap Resist":40,"Slow Resist":30,"Life Leech Resist":20,"Petrify Resist":0,"Sleep Resist":0,"Disruption Resist":0,"Energy Leech Resist":0,"Reflect Resist":0},"endgame":{"OffensiveAbility":2500,"DefensiveAbility":2600,"ArmorRating":2800,"Health":16000},"pct":{"PhysicalResist":28,"ChanceToBlock":60},"levelFloor":0.35,"diffScale":{"0":0.55,"1":0.78,"2":1.0},"verdictWeight":{"priority":4,"nice":2,"ignore":0},"coverageFloor":0.7,"gradeBands":["D","C","B","A"]};
+window.GD_TARGETS={"sigma":25,"resistSigma":80,"residual":0.11,"damageTypes":3,"damageFloor":0.05,"strongKinds":["skill","component","augment"],"corroboration":1,"petBuildDamage":250,"mechanismDominance":0.5,"skillSubtreeShare":0.25,"control":{"Stun Resist":60,"Freeze Resist":40,"Trap Resist":40,"Slow Resist":30,"Life Leech Resist":20,"Petrify Resist":0,"Sleep Resist":0,"Disruption Resist":0,"Energy Leech Resist":0,"Reflect Resist":0},"endgame":{"OffensiveAbility":2500,"DefensiveAbility":2600,"ArmorRating":2800,"Health":16000},"pct":{"PhysicalResist":28,"ChanceToBlock":60},"levelFloor":0.35,"diffScale":{"0":0.55,"1":0.78,"2":1.0},"verdictWeight":{"priority":4,"nice":2,"ignore":0,"avoid":-4},"coverageFloor":0.7,"gradeBands":["D","C","B","A"]};
 </script>
 <script>
 /* field -> [label, isPercent] for the equipped-item popouts; see
@@ -2179,7 +2188,10 @@ root.GDStats = { load: load, statsOf: statsOf, rawIndex: function () { return IN
      Derived from the three shipped constants exactly as targets.grade_thresholds()
      derives it. A table of floors is NOT shipped: that would be a frozen copy of
      a derivation, right until VERDICT_WEIGHT moved. */
-  function points(w) { return (w * w) / 4.0; }
+  /* ⚠️ THE SIGN IS KEPT. `avoid` weighs -4, and plain w*w would score it +4 --
+     a line the reader rejected reading as one they asked for. Mirrors
+     targets.points(); the constant it squares is shipped, the curve is not. */
+  function points(w) { return (w < 0 ? -1 : 1) * (w * w) / 4.0; }
 
   function weight(v) {
     var W = root.GD_TARGETS.verdictWeight;
@@ -2205,7 +2217,22 @@ root.GDStats = { load: load, statsOf: statsOf, rawIndex: function () { return IN
   }
 
   /* ---- what the character wants ------------------------------------------ */
-  var RANK = { ignore: 0, nice: 1, priority: 2 };
+  /* ⚠️ `avoid` RANKS BELOW BOTH POSITIVES -- the twin of affixes.py's
+     _VERDICT_RANK, and the note there carries the reasoning: one line read by
+     several rows resolves to what WANTS it, so marking Cold Resist `avoid` does
+     not punish the elemental line that is also delivering the Fire the character
+     asked for. */
+  var RANK = { ignore: 0, avoid: 1, nice: 2, priority: 3 };
+
+  /* The verdicts that make a line useful. `avoid` is matched so it can subtract,
+     and is useful to nobody -- it belongs in no numerator. */
+  function isPositive(v) { return v === 'priority' || v === 'nice'; }
+
+  function usefulOf(got) {
+    var out = {};
+    Object.keys(got).forEach(function (k) { if (isPositive(got[k])) out[k] = got[k]; });
+    return out;
+  }
 
   /* field index -> strongest verdict any row reading it holds.
      A field can feed several rows -- defensiveElementalResistance is Fire, Cold
@@ -2246,13 +2273,19 @@ root.GDStats = { load: load, statsOf: statsOf, rawIndex: function () { return IN
   /* points x (COVERAGE_FLOOR + (1 - COVERAGE_FLOOR) x coverage), where coverage is
      useful lines over lines CARRIED -- so an affix padded with lines this
      character cannot use is discounted. */
+  /* ⚠️ THE TWO SUMS RUN OVER DIFFERENT SETS -- see affixes.py's score(). Points
+     are charged over every MATCHED line so an avoided one subtracts; coverage
+     counts only the USEFUL ones, so an avoided line stays in the denominator with
+     the rest of the padding instead of raising the coverage that scales its own
+     penalty. */
   function score(rec, want, skills) {
     var got = match(rec, want, skills), keys = Object.keys(got), total = rec[5];
-    if (!keys.length || !total) return [0.0, 'F'];
+    var good = Object.keys(usefulOf(got));
+    if (!good.length || !total) return [0.0, 'F'];
     var pts = 0;
     keys.forEach(function (k) { pts += points(weight(got[k])); });
     var T = root.GD_TARGETS;
-    var s = pts * (T.coverageFloor + (1 - T.coverageFloor) * (keys.length / total));
+    var s = pts * (T.coverageFloor + (1 - T.coverageFloor) * (good.length / total));
     return [s, grade(s)];
   }
 
@@ -2274,6 +2307,10 @@ root.GDStats = { load: load, statsOf: statsOf, rawIndex: function () { return IN
     var want = wantedFields(verdicts), units = {}, i;
     for (i = 0; i < IDX.r.length; i++) {
       var rec = IDX.r[i];
+      /* MATCHED lines, avoided ones included -- the same inclusion rule
+         affixes.py and raynbow.grades_by_tag use. An affix carrying only avoided
+         lines grades F rather than vanishing, which is a different fact from
+         carrying nothing at all. */
       if (!Object.keys(match(rec, want, skills)).length) continue;
       var mine = rec[9].filter(function (s) { return skills[IDX.kr[s[0]]]; })
         .map(function (s) { return IDX.k[s[1]]; }).sort().join('|');
@@ -2378,6 +2415,10 @@ root.GDStats = { load: load, statsOf: statsOf, rawIndex: function () { return IN
     var want = wantedFields(verdicts), units = {}, i;
     for (i = 0; i < IDX.r.length; i++) {
       var rec = IDX.r[i];
+      /* MATCHED lines, avoided ones included -- the same inclusion rule
+         affixes.py and raynbow.grades_by_tag use. An affix carrying only avoided
+         lines grades F rather than vanishing, which is a different fact from
+         carrying nothing at all. */
       if (!Object.keys(match(rec, want, skills)).length) continue;
       var mine = rec[9].filter(function (s) { return skills[IDX.kr[s[0]]]; })
         .map(function (s) { return IDX.k[s[1]]; }).sort().join('|');
@@ -2413,7 +2454,7 @@ root.GDStats = { load: load, statsOf: statsOf, rawIndex: function () { return IN
          carries is still a line this affix can give you. */
       var union = {};
       recs.forEach(function (r) {
-        var m = match(r, want, skills);
+        var m = usefulOf(match(r, want, skills));
         Object.keys(m).forEach(function (k) { union[k] = 1; });
       });
       var eff = effectsOf(recs);
@@ -2589,8 +2630,17 @@ function chip(cls, label, value) {
    promise that something reads it. */
 var filterState = { verdicts: {}, skills: {}, ready: false };
 
-var VCYCLE = ['ignore', 'nice', 'priority'];
-var VGLYPH = { ignore: '−', nice: '●', priority: '★' };
+/* ⚠️ THE CYCLE IS A SCALE, WORST TO BEST, and `avoid` sits at the bottom of it
+   rather than after `priority`. Left click walks up it -- avoid -> ignore -> nice
+   -> priority -> avoid -- so one direction always means "I want this more" and
+   the wrap is the only place that is not true. Putting avoid after priority would
+   make the same gesture mean "more" three times and "the opposite" once.
+
+   Added 2026-09-03 on the user's instruction. It is the reader's verdict only:
+   the engine never computes `avoid`, because nothing in a character's own numbers
+   says a stat is unwanted -- see targets.VERDICT_WEIGHT. */
+var VCYCLE = ['avoid', 'ignore', 'nice', 'priority'];
+var VGLYPH = { avoid: '✕', ignore: '−', nice: '●', priority: '★' };
 var overrides = {}, overrideKey = null, overrideChar = null;
 var lastColumns = 0;
 
@@ -2815,7 +2865,7 @@ function paintFilterBtn() {
    to VCYCLE and it appears here, rename a glyph and both change together. A
    hand-written legend is a second description of the scale, and the one that goes
    stale is always the description rather than the thing. */
-var VLABEL = { ignore: 'Ignore', nice: 'Nice to have', priority: 'Priority' };
+var VLABEL = { avoid: 'Avoid', ignore: 'Ignore', nice: 'Nice to have', priority: 'Priority' };
 
 function paintLegend() {
   var host = el('legend');
