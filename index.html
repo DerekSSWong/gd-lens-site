@@ -2641,6 +2641,54 @@ function paintReset() {
 
    The work happens on click, not on load: decoding the corpus and scoring 5,828
    records is half a second nobody should pay for unless they want the file. */
+/* ONE PAGE, TWO HOSTS, AND HANDING OVER A FILE WORKS DIFFERENTLY ON EACH.
+   The Pages site is an ordinary browser: a blob URL on `<a download>` saves the
+   file. The claude.ai artifact viewer grants a page NO download permission, so
+   that same link is silently inert -- the button ran, graded 5,828 records and
+   handed the viewer nothing, with no error anywhere. Its sandbox mediates a save
+   through the `downloads` capability instead, declared at publish time.
+
+   ⚠️ NOT A FORK, AND NOT A HOST SNIFF. The page asks whether the capability is
+   THERE and uses it if so; both builds carry both paths, so the site and the
+   artifact stay one set of bytes apart from the bundled save.
+
+   ⚠️ AND NO FALLING BACK WHEN THE CAPABILITY REFUSES. A refusal means the viewer
+   declined or the platform said no -- dropping to the blob link there would
+   "succeed" while handing over nothing, which is the believable wrong answer this
+   project gates against everywhere else. The refusal is reported. */
+var _downloads = null;
+function downloadsCap() {
+  if (!_downloads) {
+    /* `window.claude` is absent entirely off-platform, and carries only `use`
+       on it -- never a `.downloads` member to feature-check. use() resolves
+       null when the view cannot run the capability, and can take up to 10s. */
+    _downloads = (window.claude && typeof window.claude.use === 'function')
+      ? window.claude.use('downloads').catch(function () { return null; })
+      : Promise.resolve(null);
+  }
+  return _downloads;
+}
+
+/* Give `text` to the viewer as `name`. Resolves 'saved'/'delivered'; rejects
+   with the capability's {code, message} so the caller can tell "you said no"
+   from "it broke". The game reads this file BY NAME, so the name is not the
+   caller's to prettify. */
+function saveText(name, text) {
+  return downloadsCap().then(function (dl) {
+    if (!dl) {
+      var url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+      var a = document.createElement('a');
+      a.href = url; a.download = name; a.click();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+      return 'saved';
+    }
+    return dl.save({ filename: name, data: text }).then(function (r) {
+      return r.status;
+    });
+  });
+}
+
+
 function paintFilterBtn() {
   var hd = el('computedhd');
   if (!hd || !window.GDAffixes) return;
@@ -2657,19 +2705,25 @@ function paintFilterBtn() {
       window.GDAffixes.buildFilter(filterState.verdicts, filterState.skills,
                                    overrideChar).then(function (res) {
         if (!res) { btn.textContent = 'Not supported in this browser'; return; }
-        /* The game reads this file by NAME, so it downloads under the name the
+        /* The game reads this file by NAME, so it goes over under the name the
            game wants -- renaming it is a step to get wrong, and the character it
            belongs to is reported on the button instead. */
-        var url = URL.createObjectURL(new Blob([res.text], { type: 'text/plain' }));
-        var a = document.createElement('a');
-        a.href = url; a.download = 'tagsgdx3_uimain.txt'; a.click();
-        setTimeout(function () { URL.revokeObjectURL(url); }, 0);
-        var n = Object.keys(overrides).length;
-        btn.textContent = 'Loot filter \u00b7 ' + res.graded + ' graded';
-        btn.title = res.affix + ' affixes coloured for ' + (overrideChar || 'this character')
-          + (n ? ' \u00b7 including your ' + n + ' hand-set icon' + (n === 1 ? '' : 's') : '')
-          + ' \u00b7 install to <Grim Dawn>/settings/text_en/tagsgdx3_uimain.txt';
-      }).catch(function (e) { btn.textContent = 'Filter failed: ' + e.message; });
+        return saveText('tagsgdx3_uimain.txt', res.text).then(function (status) {
+          if (status === 'delivered') { btn.textContent = 'Loot filter sent'; return; }
+          var n = Object.keys(overrides).length;
+          btn.textContent = 'Loot filter \u00b7 ' + res.graded + ' graded';
+          btn.title = res.affix + ' affixes coloured for ' + (overrideChar || 'this character')
+            + (n ? ' \u00b7 including your ' + n + ' hand-set icon' + (n === 1 ? '' : 's') : '')
+            + ' \u00b7 install to <Grim Dawn>/settings/text_en/tagsgdx3_uimain.txt';
+        });
+      }).catch(function (e) {
+        /* DECLINED IS NOT A FAILURE. The viewer was asked and said no; saying
+           "Filter failed" there blames the page for the answer it asked for.
+           Anything else is reported with its code, because a save that quietly
+           does nothing is the whole bug this path exists to fix. */
+        if (e && e.code === 'declined') { btn.textContent = 'Download loot filter'; return; }
+        btn.textContent = 'Filter failed: ' + ((e && (e.code || e.message)) || e);
+      });
     });
     hd.appendChild(btn);
   }
@@ -3805,6 +3859,14 @@ if (window.GD_DEMO_SAVE) {
     fail('The bundled sample save failed to load (' + e.message + '). Choose a file instead.');
   }
 }
+
+/* THE ONE SEAM IN THIS FILE, and it is here because of what it gates. ui.js is a
+   closed IIFE with no exports; tools/check_downloads.js needs the save path
+   because the failure it checks for -- a save that silently hands the viewer
+   nothing -- throws nothing, logs nothing and leaves no trace in the DOM, so it
+   cannot be observed from outside the page at all. stats.js and affixes.js
+   expose theirs for the same reason. Nothing in the page reads this. */
+window.GDSave = { saveText: saveText, downloadsCap: downloadsCap };
 })();
 
 </script>
