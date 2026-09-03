@@ -704,7 +704,7 @@ window.GD_SHEET=[{"section":"Attributes","rows":[{"label":"Physique","kind":"com
 <script>
 /* Verdict targets -- ASSERTED, not derived. See targets.py, which
    carries the reasoning and the warning that goes with it. */
-window.GD_TARGETS={"sigma":25,"resistSigma":80,"residual":0.11,"damageTypes":3,"damageFloor":0.05,"strongKinds":["skill","component","augment"],"corroboration":1,"petBuildDamage":250,"mechanismDominance":0.5,"skillSubtreeShare":0.25,"control":{"Stun Resist":60,"Freeze Resist":40,"Trap Resist":40,"Slow Resist":30,"Life Leech Resist":20,"Petrify Resist":0,"Sleep Resist":0,"Disruption Resist":0,"Energy Leech Resist":0,"Reflect Resist":0},"endgame":{"OffensiveAbility":2500,"DefensiveAbility":2600,"ArmorRating":2800,"Health":16000},"pct":{"PhysicalResist":28,"ChanceToBlock":60},"levelFloor":0.35,"diffScale":{"0":0.55,"1":0.78,"2":1.0},"verdictWeight":{"priority":4,"nice":2,"ignore":0,"avoid":-4},"coverageFloor":0.7,"gradeBands":["D","C","B","A"]};
+window.GD_TARGETS={"sigma":25,"resistSigma":80,"residual":0.11,"damageTypes":3,"damageFloor":0.05,"strongKinds":["skill","component","augment"],"corroboration":1,"petBuildDamage":250,"mechanismDominance":0.5,"skillSubtreeShare":0.25,"control":{"Stun Resist":60,"Freeze Resist":40,"Trap Resist":40,"Slow Resist":30,"Life Leech Resist":20,"Petrify Resist":0,"Sleep Resist":0,"Disruption Resist":0,"Energy Leech Resist":0,"Reflect Resist":0},"endgame":{"OffensiveAbility":2500,"DefensiveAbility":2600,"ArmorRating":2800,"Health":16000},"pct":{"PhysicalResist":28,"ChanceToBlock":60},"levelFloor":0.35,"diffScale":{"0":0.55,"1":0.78,"2":1.0},"verdictWeight":{"priority":4,"nice":2,"ignore":0,"avoid":-4},"coveragePower":0.5,"bandCoverage":0.7,"gradeBands":["D","C","B","A"]};
 </script>
 <script>
 /* field -> [label, isPercent] for the equipped-item popouts; see
@@ -2148,9 +2148,9 @@ root.GDStats = { load: load, statsOf: statsOf, rawIndex: function () { return IN
  *   line_key()     a regex with six special cases. Each field's line key is
  *                  computed at build time and shipped as `lk`.
  *   field_to_rows  which sheet rows read a field, shipped as `fr`.
- *   the constants  VERDICT_WEIGHT, COVERAGE_FLOOR, GRADE_BANDS and the colour
- *                  tables come from GD_TARGETS / GD_GRADE_COLOUR. Not one
- *                  number in this file is written down.
+ *   the constants  VERDICT_WEIGHT, COVERAGE_POWER, BAND_COVERAGE, GRADE_BANDS
+ *                  and the colour tables come from GD_TARGETS / GD_GRADE_COLOUR.
+ *                  Not one number in this file is written down.
  *
  * What IS mirrored is the arithmetic: match, score and the per-tag collapse.
  * That is the part that depends on the character, so it is the only part a
@@ -2203,7 +2203,7 @@ root.GDStats = { load: load, statsOf: statsOf, rawIndex: function () { return IN
   }
 
   function thresholds() {
-    var T = root.GD_TARGETS, step = points(T.verdictWeight.priority) * T.coverageFloor;
+    var T = root.GD_TARGETS, step = points(T.verdictWeight.priority) * T.bandCoverage;
     return T.gradeBands.map(function (g, i) { return [g, (i + 1) * step]; })
       .sort(function (a, b) { return b[1] - a[1]; });
   }
@@ -2270,9 +2270,11 @@ root.GDStats = { load: load, statsOf: statsOf, rawIndex: function () { return IN
     return best;
   }
 
-  /* points x (COVERAGE_FLOOR + (1 - COVERAGE_FLOOR) x coverage), where coverage is
-     useful lines over lines CARRIED -- so an affix padded with lines this
-     character cannot use is discounted. */
+  /* points x coverage ** COVERAGE_POWER, where coverage is useful lines over
+     lines CARRIED -- so an affix padded with lines this character cannot use is
+     discounted, and under a root the discount is steep enough to cost a band.
+     The exponent is shipped, not written here; see targets.COVERAGE_POWER for
+     why it is a root rather than the old floored line. */
   /* ⚠️ THE TWO SUMS RUN OVER DIFFERENT SETS -- see affixes.py's score(). Points
      are charged over every MATCHED line so an avoided one subtracts; coverage
      counts only the USEFUL ones, so an avoided line stays in the denominator with
@@ -2285,7 +2287,7 @@ root.GDStats = { load: load, statsOf: statsOf, rawIndex: function () { return IN
     var pts = 0;
     keys.forEach(function (k) { pts += points(weight(got[k])); });
     var T = root.GD_TARGETS;
-    var s = pts * (T.coverageFloor + (1 - T.coverageFloor) * (good.length / total));
+    var s = pts * Math.pow(good.length / total, T.coveragePower);
     return [s, grade(s)];
   }
 
