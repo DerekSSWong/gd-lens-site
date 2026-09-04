@@ -25,6 +25,33 @@
     --accent-mute:#7A5637;
     --ok:#2F6B3A; --warn:#8A5B08; --bad:#993122;
     --r-common:#6A655C; --r-magical:#7E6410; --r-rare:#2F6B2A; --r-epic:#2B569E; --r-legendary:#6F3D95;
+    /* ---- the loot filter's own colours, as ink ----
+       The filter paints an affix by its GRADE, in the game's rarity ramp
+       (raynbow.GRADE_COLOUR: F white, C yellow, B green, A blue, S indigo). The
+       affix tab has to say the same thing, or a grade heading here and the name
+       in game are two statements about one affix.
+
+       ⚠️ KEYED ON THE PALETTE CODE, not on the grade letter. The grade -> code
+       table is raynbow's and ships as window.GD_GRADE_COLOUR; the page looks the
+       code up at paint time (gradeInk in ui.js), so a remap there moves these
+       with no CSS edit and no chance of the two disagreeing. A rule per letter
+       is what this replaced, and it had already survived one renaming of the
+       scale by not mentioning it.
+
+       ⚠️ ALIASES OF --r-*, not the game's literal hexes. Indigo #5A039A is a 1.9:1
+       contrast on the dark ground and White #FFFFFF is invisible on the light one
+       -- the game's ramp is calibrated for the game's own dark parchment. The
+       --r-* set is that same ramp already tuned for both of this page's grounds,
+       and .atier already reads it, so the tier chip and the grade letter come out
+       of one place. Hue is the part that carries the meaning and hue is preserved:
+       S is purple in both themes. */
+    --fc-W:var(--r-common); --fc-Y:var(--r-magical); --fc-G:var(--r-rare);
+    --fc-B:var(--r-epic); --fc-I:var(--r-legendary);
+    /* Silver is off the ramp on purpose (raynbow.UNGRADED_COLOUR): "carries
+       nothing you want" is not a rung on it. Nothing on this tab is ungraded
+       today -- the catalogue lists F..S only -- so this exists so that stops
+       being load-bearing. */
+    --fc-S:var(--faint);
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
@@ -337,20 +364,24 @@
   .tab:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
 
   .agrades{display:flex; flex-direction:column; gap:14px}
+  /* A <details> per band since 2026-09-04: six bands stacked open put the low
+     grades several screens down, and the bands are the index to this list. */
   .agrade{border-top:1px solid var(--line-hi); padding-top:6px}
-  .agh{display:flex; align-items:baseline; gap:8px; margin-bottom:3px}
-  .agh .grade{font-family:"Space Mono",monospace; font-weight:700; font-size:13px}
+  .agh{display:flex; align-items:baseline; gap:8px; margin-bottom:3px;
+    cursor:pointer; list-style:none}
+  .agh::-webkit-details-marker{display:none}
+  /* The caret is drawn here rather than left to the UA marker, which sits on the
+     baseline of a 13px monospace letter and cannot be aligned with it. */
+  .agh .acar{font-family:"IBM Plex Mono",monospace; font-size:9px; color:var(--faint);
+    flex:none; width:9px; transition:transform .12s}
+  .agrade[open] > .agh .acar{transform:rotate(90deg)}
+  .agh .grade{font-family:"Space Mono",monospace; font-weight:700; font-size:13px;
+    flex:none}
   .agh .agn{font-size:10.5px; color:var(--faint)}
-  /* Same colour scale the loot filter writes, so a row here and a name in game
-     read as the same statement. */
-  /* One rule per band, named for the CURRENT letters -- F C B A S since
-     2026-09-03. gclass() builds these from the grade itself, so a band with no
-     rule here renders unstyled rather than failing; the style gate is what
-     catches that. */
-  .agh .grade.gS{color:var(--accent)}
-  .agh .grade.gA,.agh .grade.gB{color:var(--ink)}
-  .agh .grade.gC{color:var(--dim)}
-  .agh .grade.gF{color:var(--faint)}
+  /* The letter's colour is set inline from --fc-<code>, looked up through
+     window.GD_GRADE_COLOUR -- see gradeInk() in ui.js and the --fc-* block above.
+     There is deliberately no per-letter rule here: one would be a second copy of
+     raynbow's table, free to disagree with the file the reader downloads. */
   .arow > summary{display:flex; align-items:baseline; gap:8px; padding:1px 0;
     font-size:11.5px; cursor:pointer; list-style:none}
   .arow > summary::-webkit-details-marker{display:none}
@@ -369,6 +400,58 @@
     min-width:52px; text-align:right; font-variant-numeric:tabular-nums; flex:none}
   .arow > .src .sn{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .arow > .src .sn.dim{color:var(--faint)}
+
+  /* ---------- affix search ----------
+     The GD Catalogue's affix filter, minus the parts that do not apply here:
+     no lanes (this tab is one list), no item bases (it has none), no facet
+     checkboxes (the grade bands ARE the axis, and slots are on every row).
+     What is kept is the matching: AND/OR/NOT rows, the damage/dmg synonym and
+     the `flat` modifier, and -- the load-bearing one -- matching PER LINE, so
+     "acid resist" cannot be satisfied by "Acid Damage" on one line and "Cold
+     Resist" on another. */
+  .asearch{margin:0 0 8px}
+  .asearch-bar{display:flex; align-items:stretch; gap:6px}
+  .abox{position:relative; flex:1 1 auto; min-width:0; display:flex; align-items:center}
+  .abox svg{position:absolute; left:7px; width:11px; height:11px; stroke:var(--faint);
+    fill:none; pointer-events:none}
+  .abox input{width:100%; min-width:0; background:var(--sunk); color:var(--ink);
+    border:1px solid var(--line); padding:4px 7px 4px 23px;
+    font:400 11.5px "IBM Plex Mono",monospace}
+  .abox input::placeholder{color:var(--faint)}
+  /* An extra term row carries no magnifier -- one bar, one icon -- so its
+     input takes the padding back. */
+  .abox.plain input{padding-left:7px}
+  .abox input:focus{outline:none; border-color:var(--accent)}
+  .abtn{appearance:none; background:var(--sunk); border:1px solid var(--line);
+    color:var(--dim); width:24px; flex:none; cursor:pointer; padding:0;
+    display:flex; align-items:center; justify-content:center}
+  .abtn svg{width:12px; height:12px; stroke:currentColor; fill:none}
+  .abtn:hover{color:var(--ink); border-color:var(--line-hi)}
+  .abtn:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+  .abtn.expanded svg{transform:rotate(180deg)}
+  /* ⚠️ .aexpand HAS ITS OWN display, so the UA's [hidden]{display:none} loses to
+     it on equal specificity and el.hidden=true does nothing visible. Every
+     element toggled with .hidden needs its own [hidden] rule; this is the trap
+     the catalogue's filter panel shipped once already. */
+  .aexpand{display:flex; flex-direction:column; gap:5px; margin-top:5px}
+  .aexpand[hidden]{display:none}
+  .aterm{display:flex; align-items:stretch; gap:6px}
+  .aop{background:var(--sunk); color:var(--dim); border:1px solid var(--line);
+    font:600 9.5px "IBM Plex Mono",monospace; letter-spacing:.06em; padding:0 3px;
+    flex:none; cursor:pointer}
+  .aop:focus-visible,.aadd:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+  .arm{appearance:none; background:none; border:0; color:var(--faint); cursor:pointer;
+    font:400 14px "IBM Plex Mono",monospace; line-height:1; padding:0 3px; flex:none}
+  .arm:hover{color:var(--bad)}
+  .aadd{appearance:none; background:none; border:0; color:var(--accent); cursor:pointer;
+    font:600 10px "IBM Plex Mono",monospace; letter-spacing:.06em; text-transform:uppercase;
+    padding:1px 0; text-align:left; align-self:flex-start}
+  /* GROUND AND A RULE, never ink. The catalogue's mark repaints the text itself
+     in --accent-ink, which would recolour an affix name the moment it matched --
+     and what a colour means on this tab is the whole point of the grade letters
+     beside it. No radius and no shadow, per the rest of the page. */
+  .hit{background:var(--accent-soft); border-bottom:1px solid var(--accent); color:inherit}
+  .anone{font-size:11px; color:var(--faint); margin:6px 0 0}
 
   /* ---------- verdict legend ---------- */
   .legend{display:flex; flex-wrap:wrap; align-items:center; gap:4px 14px;
@@ -640,8 +723,35 @@
           <div id="sheet"></div>
         </div>
         <div class="panel-bd hidden" id="view-affix" role="tabpanel">
+          <!-- The catalogue's filter, one list instead of three lanes. The bar is
+               always visible; the extra AND/OR/NOT rows are behind the chevron,
+               because one box answers almost every question and three rows of
+               operators above a list is a form, not a search. -->
+          <div class="asearch">
+            <div class="asearch-bar">
+              <div class="abox">
+                <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="asearch0" autocomplete="off"
+                       placeholder="Search affixes, effects and slots…"
+                       aria-label="Search affixes">
+              </div>
+              <button type="button" class="abtn" id="aclear" title="Clear the search"
+                      aria-label="Clear the search">
+                <svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke-linecap="round"/></svg>
+              </button>
+              <button type="button" class="abtn" id="amore" aria-expanded="false"
+                      aria-controls="aexpand" title="More terms" aria-label="More terms">
+                <svg viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+            <div class="aexpand" id="aexpand" hidden>
+              <div id="aterms"></div>
+              <button type="button" class="aadd" id="aadd">+ Add term</button>
+            </div>
+          </div>
           <p class="secnote" id="affixnote"></p>
           <div class="agrades" id="affixlist"></div>
+          <p class="anone hidden" id="affixnone"></p>
         </div>
       </section>
       </div>
@@ -2896,43 +3006,333 @@ function paintLegend() {
    Every affix the filter colours, grouped by the grade it was given. Built on
    demand and once: scoring 5,828 records is half a second, and a reader who never
    opens the tab should not pay it. Rebuilt when the icons change, because the
-   grades do. */
-var affixPainted = false;
+   grades do.
+
+   ⚠️ GRADING AND PAINTING ARE TWO STEPS since 2026-09-04, and the split is what
+   makes the search box affordable: a keystroke repaints ~450 rows out of
+   `affixData`, it does not re-score 5,828 records. Only a verdict change drops
+   the grading. */
+var affixPainted = false;   /* a grading is done or in flight */
+var affixData = null;       /* grade -> [affix]: the expensive half */
+var affixOpen = {};         /* grade -> the reader's own open/closed choice */
+/* The search, as AND/OR/NOT rows. Row 0 is the always-visible bar and always
+   exists; rows 1+ live behind the chevron. */
+var affixRows = [{ text: '' }];
+var lastTermInput = null;
 
 function invalidateAffixes() {
   affixPainted = false;
+  affixData = null;
   if (el('tab-affix') && el('tab-affix').getAttribute('aria-selected') === 'true') paintAffixes();
 }
 
 function paintAffixes() {
   var host = el('affixlist'), note = el('affixnote');
   if (!host || !window.GDAffixes || !filterState.ready) return;
+  wireAffixSearch();
+  if (affixData) { renderAffixes(); return; }
   if (affixPainted) return;
   affixPainted = true;
   host.textContent = '';
-  note.textContent = 'Grading\u2026';
+  note.textContent = 'Grading…';
   window.GDAffixes.load().then(function (idx) {
     if (!idx) { note.textContent = 'Not supported in this browser.'; return; }
-    var by = window.GDAffixes.catalogue(filterState.verdicts, filterState.skills);
-    var order = window.GDAffixes.gradeOrder().slice().reverse();
-    var total = 0;
-    order.forEach(function (g) { total += by[g].length; });
-    note.textContent = total + ' affixes carry something this character wants, '
+    affixData = window.GDAffixes.catalogue(filterState.verdicts, filterState.skills);
+    renderAffixes();
+  }).catch(function (e) { note.textContent = 'Failed: ' + e.message; });
+}
+
+/* ---- the search ---------------------------------------------------------
+   Ported from the GD Catalogue's affix filter, minus what does not apply: no
+   lanes (one list), no item bases (none here), no facet checkboxes (the grade
+   bands are the axis and every row already prints its slots). What is kept is
+   the matching, and the reason to keep it verbatim is that each rule below is
+   a bug that shipped there first. */
+var APOS_RE = /['’]/g;
+function stripApos(s) { return s.replace(APOS_RE, ''); }
+
+var SEARCH_SYNONYMS = [['damage', 'dmg']];
+function expandTermVariants(w) {
+  var variants = [w];
+  SEARCH_SYNONYMS.forEach(function (pair) {
+    var a = pair[0], b = pair[1], next = [];
+    variants.forEach(function (v) {
+      next.push(v);
+      if (v.indexOf(a) >= 0) next.push(v.split(a).join(b));
+      if (v.indexOf(b) >= 0) next.push(v.split(b).join(a));
+      /* Still mid-word ("dam" on the way to "damage"): treat it as the whole
+         word already, or the result count dips and jumps as the last letters
+         land instead of only ever narrowing. */
+      if (a.indexOf(v) === 0) next.push(b);
+      if (b.indexOf(v) === 0) next.push(a);
+    });
+    variants = next;
+  });
+  var seen = {}, out = [];
+  variants.forEach(function (v) { if (!seen[v]) { seen[v] = 1; out.push(v); } });
+  return out;
+}
+
+/* `flat` is a MODIFIER, not a word to find: it means "a line for the remaining
+   words that is not a percentage". Typing "%" already isolates the other half.
+   Any prefix of it counts as the whole word, for the same anti-flicker reason. */
+function parseSearchWords(t) {
+  var raw = stripApos(t.toLowerCase()).split(/\s+/).filter(Boolean);
+  var isFlat = function (w) { return w.length > 0 && 'flat'.indexOf(w) === 0; };
+  return { requireFlat: raw.some(isFlat), words: raw.filter(function (w) { return !isFlat(w); }) };
+}
+
+/* The line a row PRINTS, composed once and used by both the search and the
+   painter -- a second composer is how a searchable field stops being the field
+   the reader can see. */
+function effectValue(e) {
+  if (e.lo === null) return '';
+  return (e.lo === e.hi ? String(e.lo) : e.lo + '–' + e.hi) + (e.pct ? '%' : '');
+}
+function effectLine(e) {
+  var v = effectValue(e);
+  return v ? v + ' ' + e.label : e.label;
+}
+
+/* ⚠️ ONE CANDIDATE LINE PER LINE, never one merged blob. All of a row's words
+   must land on the SAME line, or "acid resist" is satisfied by "Acid Damage"
+   above "Cold Resist" -- both words are on the card and neither is the answer.
+   Every line here is one the row renders, and every one of them is highlighted;
+   the fields that are NOT searched (the kind chip, the tier, the level range,
+   the "+N more lines" note) are not marked either. Both or neither. */
+function affixLines(a) {
+  var out = [a.name];
+  a.effects.forEach(function (e) { out.push(effectLine(e)); });
+  a.slots.forEach(function (sl) { out.push(sl); });
+  return out;
+}
+
+/* Two memos, because a keystroke repaints every row and both of these are
+   otherwise recomputed ~7,000 times for an answer that cannot have changed:
+   the parse of a query row (same until the reader types again) and an affix's
+   normalised lines (same until the grading is dropped, which replaces the
+   objects they hang on). */
+var _parsed = {};
+function parsedTerm(t) {
+  var p = _parsed[t];
+  if (!p) {
+    if (Object.keys(_parsed).length > 400) _parsed = {};
+    var w = parseSearchWords(t);
+    p = _parsed[t] = { requireFlat: w.requireFlat, variants: w.words.map(expandTermVariants) };
+  }
+  return p;
+}
+function normLines(a) {
+  if (!a._nl) a._nl = affixLines(a).map(function (l) { return stripApos(l.toLowerCase()); });
+  return a._nl;
+}
+
+function termMatches(a, t) {
+  var p = parsedTerm(t);
+  return normLines(a).some(function (lower) {
+    if (p.requireFlat && lower.indexOf('%') >= 0) return false;
+    return p.variants.every(function (vs) {
+      return vs.some(function (v) { return lower.indexOf(v) >= 0; });
+    });
+  });
+}
+
+/* Rows combine left to right with no precedence: each row's operator applies to
+   the running result so far against that row's own match. An empty list has no
+   opinion, so an untouched box never narrows anything. */
+function liveRows() {
+  return affixRows.filter(function (r) { return r.text.trim() !== ''; });
+}
+function affixMatches(a) {
+  var live = liveRows();
+  if (!live.length) return true;
+  var result = null;
+  live.forEach(function (row, i) {
+    var m = termMatches(a, row.text.trim());
+    if (i === 0) { result = m; return; }
+    if (row.op === 'OR') result = result || m;
+    else if (row.op === 'NOT') result = result && !m;
+    else result = result && m;
+  });
+  return result;
+}
+
+/* ⚠️ HIGHLIGHT SCOPE FOLLOWS SEARCH SCOPE, and it does not inherit it -- a row
+   contributes its words only when THIS line is the one satisfying that row's
+   whole word set, which is the same same-line test termMatches just made. A
+   NOT row marks nothing: it is why the card is here in spite of, not because. */
+function markTerms(line) {
+  var lower = stripApos(line.toLowerCase()), out = [];
+  affixRows.forEach(function (r) {
+    var t = r.text.trim();
+    if (!t || r.op === 'NOT') return;
+    var p = parsedTerm(t);
+    if (p.requireFlat && lower.indexOf('%') >= 0) return;
+    var satisfied = p.variants.every(function (vs) {
+      return vs.some(function (v) { return lower.indexOf(v) >= 0; });
+    });
+    if (satisfied) p.variants.forEach(function (vs) { vs.forEach(function (v) { out.push(v); }); });
+  });
+  return out;
+}
+
+var RE_META = /[.*+?^${}()|[\]\\]/g;
+/* The term is apostrophe-stripped and the text is not, so "deaths" has to find
+   "Death's" -- an optional apostrophe between every character is what lets one
+   pattern mark the real span in the real text. */
+function apostropheTolerant(w) {
+  return w.split('').map(function (c) { return c.replace(RE_META, '\\$&'); }).join("['’]?");
+}
+
+/* A span of `str` with every marked term wrapped. Built out of ELEMENTS, not
+   innerHTML: the gates walk this tree, and a string of markup is opaque to them.
+   `line` is the whole candidate line the string belongs to, because the
+   satisfaction test above is per line and a value and its label are two spans of
+   one line. */
+function hlSpan(tag, cls, str, line) {
+  var n = text(tag, cls);
+  var terms = markTerms(line === undefined ? str : line);
+  if (!terms.length) { n.textContent = str; return n; }
+  var re = new RegExp('(' + terms.map(apostropheTolerant).join('|') + ')', 'gi');
+  var i = 0, m;
+  while ((m = re.exec(str)) !== null) {
+    if (m[0].length === 0) { re.lastIndex++; continue; }
+    if (m.index > i) n.appendChild(text('span', null, str.slice(i, m.index)));
+    n.appendChild(text('mark', 'hit', m[0]));
+    i = m.index + m[0].length;
+  }
+  if (i < str.length) n.appendChild(text('span', null, str.slice(i)));
+  return n;
+}
+
+function wireAffixSearch() {
+  var bar = el('asearch0');
+  if (!bar || bar._wired) return;
+  bar._wired = true;
+  bar.addEventListener('input', function () {
+    affixRows[0].text = bar.value; renderAffixes();
+  });
+  var clear = el('aclear');
+  if (clear) clear.addEventListener('click', function () {
+    affixRows = [{ text: '' }];
+    bar.value = '';
+    renderTerms();
+    renderAffixes();
+  });
+  var more = el('amore'), exp = el('aexpand');
+  if (more && exp) more.addEventListener('click', function () {
+    var on = more.classList.toggle('expanded');
+    exp.hidden = !on;
+    more.setAttribute('aria-expanded', String(on));
+  });
+  var add = el('aadd');
+  if (add) add.addEventListener('click', function () {
+    affixRows.push({ op: 'AND', text: '' });
+    renderTerms();
+    if (lastTermInput && lastTermInput.focus) lastTermInput.focus();
+  });
+}
+
+function renderTerms() {
+  var host = el('aterms');
+  if (!host) return;
+  host.textContent = '';
+  lastTermInput = null;
+  affixRows.forEach(function (row, i) {
+    if (i === 0) return;
+    var line = text('div', 'aterm');
+    var sel = document.createElement('select');
+    sel.className = 'aop';
+    ['AND', 'OR', 'NOT'].forEach(function (op) {
+      var o = document.createElement('option');
+      o.value = op; o.textContent = op;
+      if ((row.op || 'AND') === op) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.addEventListener('change', function () { row.op = sel.value; renderAffixes(); });
+    line.appendChild(sel);
+    var box = text('div', 'abox plain');
+    var inp = document.createElement('input');
+    inp.type = 'text'; inp.value = row.text;
+    inp.setAttribute('placeholder', 'Add term…');
+    inp.setAttribute('autocomplete', 'off');
+    inp.setAttribute('aria-label', 'Additional search term');
+    inp.addEventListener('input', function () { row.text = inp.value; renderAffixes(); });
+    box.appendChild(inp);
+    line.appendChild(box);
+    var rm = text('button', 'arm', '×');
+    rm.type = 'button';
+    rm.setAttribute('title', 'Remove term');
+    rm.setAttribute('aria-label', 'Remove term');
+    /* Re-rendered after every splice, so the captured index is never stale. */
+    rm.addEventListener('click', function () {
+      affixRows.splice(i, 1); renderTerms(); renderAffixes();
+    });
+    line.appendChild(rm);
+    host.appendChild(line);
+    lastTermInput = inp;
+  });
+}
+
+function renderAffixes() {
+  var host = el('affixlist'), note = el('affixnote'), none = el('affixnone');
+  if (!host || !affixData || !window.GDAffixes) return;
+  var order = window.GDAffixes.gradeOrder().slice().reverse();
+  var searching = liveRows().length > 0;
+  var total = 0, shown = 0, first = true;
+  host.textContent = '';
+  order.forEach(function (g) {
+    var list = affixData[g] || [];
+    total += list.length;
+    var hits = searching ? list.filter(affixMatches) : list;
+    if (!hits.length) return;
+    shown += hits.length;
+    var sec = document.createElement('details');
+    sec.className = 'agrade';
+    /* OPEN STATE. The reader's own choice wins wherever they have made one;
+       otherwise a search opens every band that has a hit (hiding the hits behind
+       a click is the opposite of what was asked for) and a resting list opens
+       the best band only, which is the scrolling this replaced. */
+    sec.open = (g in affixOpen) ? affixOpen[g] : (searching || first);
+    sec.addEventListener('toggle', function () { affixOpen[g] = sec.open; });
+    first = false;
+    var hd = document.createElement('summary');
+    hd.className = 'agh';
+    hd.appendChild(text('span', 'acar', '▸'));
+    var letter = text('span', gclass(g), g);
+    var ink = gradeInk(g);
+    if (ink) letter.style.color = ink;
+    hd.appendChild(letter);
+    hd.appendChild(text('span', 'agn', searching
+      ? hits.length + ' of ' + list.length
+      : list.length + ' affix' + (list.length === 1 ? '' : 'es')));
+    sec.appendChild(hd);
+    hits.forEach(function (a) { sec.appendChild(affixRow(a)); });
+    host.appendChild(sec);
+  });
+  note.textContent = searching
+    ? shown + ' of ' + total + ' affixes match, graded exactly as the loot filter '
+      + 'colours them. An effect list shows only the lines the sheet can name.'
+    : total + ' affixes carry something this character wants, '
       + 'graded exactly as the loot filter colours them. '
       + 'An effect list shows only the lines the sheet can name.';
-    host.textContent = '';
-    order.forEach(function (g) {
-      var list = by[g];
-      if (!list.length) return;
-      var sec = text('div', 'agrade');
-      var hd = text('div', 'agh');
-      hd.appendChild(text('span', gclass(g), g));
-      hd.appendChild(text('span', 'agn', list.length + ' affix' + (list.length === 1 ? '' : 'es')));
-      sec.appendChild(hd);
-      list.forEach(function (a) { sec.appendChild(affixRow(a)); });
-      host.appendChild(sec);
-    });
-  }).catch(function (e) { note.textContent = 'Failed: ' + e.message; });
+  if (none) {
+    none.textContent = shown === 0 ? 'No affix matches that search.' : '';
+    none.classList.toggle('hidden', shown !== 0);
+  }
+}
+
+/* The colour the loot filter paints this grade, as one of the page's --fc-*
+   tokens. Read through raynbow's own grade -> palette-code table (shipped as
+   window.GD_GRADE_COLOUR) rather than a copy here, so the letter on this tab and
+   the name in the downloaded file cannot say different things.
+
+   Produces NOTHING -- the letter keeps --ink -- when a grade has no colour,
+   rather than a believable substitute. affix_tab.js is what makes that case a
+   build failure instead of a quiet miss. */
+function gradeInk(g) {
+  var code = (window.GD_GRADE_COLOUR || {})[g];
+  return code ? 'var(--fc-' + code + ')' : '';
 }
 
 function affixRow(a) {
@@ -2940,23 +3340,18 @@ function affixRow(a) {
   d.className = 'arow';
   var sum = document.createElement('summary');
   sum.appendChild(text('span', 'ak', a.kind === 'prefix' ? 'pre' : 'suf'));
-  sum.appendChild(text('span', 'an', a.name));
+  sum.appendChild(hlSpan('span', 'an', a.name));
   sum.appendChild(text('span', tierclass(a.tier), a.tier));
   sum.appendChild(text('span', 'aratio', a.useful + '/' + a.lines));
   sum.appendChild(text('span', 'alvl',
-    a.lmin === a.lmax ? String(a.lmin) : a.lmin + '\u2013' + a.lmax));
+    a.lmin === a.lmax ? String(a.lmin) : a.lmin + '–' + a.lmax));
   d.appendChild(sum);
   var ul = document.createElement('ul'); ul.className = 'src';
   a.effects.forEach(function (e) {
     var li = document.createElement('li');
-    if (e.lo === null) {
-      li.appendChild(text('span', 'sv', ''));
-      li.appendChild(text('span', 'sn', e.label));
-    } else {
-      var v = e.lo === e.hi ? String(e.lo) : e.lo + '\u2013' + e.hi;
-      li.appendChild(text('span', 'sv', v + (e.pct ? '%' : '')));
-      li.appendChild(text('span', 'sn', e.label));
-    }
+    var line = effectLine(e);
+    li.appendChild(hlSpan('span', 'sv', effectValue(e), line));
+    li.appendChild(hlSpan('span', 'sn', e.label, line));
     /* THE TIER THIS BAND CAME FROM, and only when it is not the top of the
        ladder. Each line shows the best roll the affix's tiers offer, and for 54
        affix names that is NOT the highest-level record -- a duration modifier
@@ -2977,8 +3372,19 @@ function affixRow(a) {
   }
   var where = document.createElement('li');
   where.appendChild(text('span', 'sv', ''));
-  where.appendChild(text('span', 'sn dim',
-    a.slots.length ? 'rolls on ' + a.slots.join(', ') : 'no drop source'));
+  var wn = text('span', 'sn dim');
+  if (!a.slots.length) {
+    wn.textContent = 'no drop source';
+  } else {
+    wn.appendChild(text('span', null, 'rolls on '));
+    /* Each slot is its own candidate line above, so each is marked on its own
+       -- joining them first would be the merged blob the per-line rule bans. */
+    a.slots.forEach(function (sl, i) {
+      if (i) wn.appendChild(text('span', null, ', '));
+      wn.appendChild(hlSpan('span', null, sl));
+    });
+  }
+  where.appendChild(wn);
   ul.appendChild(where);
   d.appendChild(ul);
   return d;
