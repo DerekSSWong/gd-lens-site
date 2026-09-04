@@ -88,8 +88,6 @@
     letter-spacing:.2em; text-transform:uppercase; color:var(--accent)}
   h1{font-family:"Space Mono","IBM Plex Mono",monospace; font-weight:700; letter-spacing:-.01em;
     font-size:clamp(19px,2.4vw,25px); line-height:1.05; margin:0; text-wrap:balance}
-  .lede{margin:0; max-width:96ch; color:var(--dim); font-size:12px; line-height:1.5}
-  .lede b{color:var(--ink); font-weight:600}
 
   /* ---------- drop target ---------- */
   .drop{border:1px dashed var(--line-hi); background:var(--panel); padding:20px 16px;
@@ -124,15 +122,6 @@
      beside it every time the last override was cleared. */
   .linkbtn.inert{color:var(--faint); text-decoration:none; cursor:default}
 
-  /* ---------- verification strip ---------- */
-  .verify{display:flex; flex-wrap:wrap; gap:5px; align-items:center;
-    font-family:"IBM Plex Mono",monospace; font-size:10.5px}
-  .vchip{display:inline-flex; align-items:center; gap:5px; padding:2px 7px;
-    border:1px solid var(--line); background:var(--panel); color:var(--dim)}
-  .vchip b{color:var(--ink); font-weight:600}
-  .vchip.pass{border-color:var(--ok); color:var(--ok)} .vchip.pass b{color:var(--ok)}
-  .vchip.fail{border-color:var(--bad); color:var(--bad)}
-
   /* ---------- panels: ruled boxes, not cards ---------- */
   .panel{background:var(--panel); border:1px solid var(--line)}
   .panel-hd{display:flex; align-items:baseline; justify-content:space-between; gap:10px;
@@ -141,6 +130,17 @@
     letter-spacing:.16em; text-transform:uppercase; color:var(--ink)}
   .panel-hd .note{font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--faint)}
   .panel-bd{padding:8px 10px}
+  /* ⚠️ SCOPED TO summary.panel-hd. The sheet's own header is a .panel-hd too and
+     carries the tab bar and the reset/download controls -- it is not a disclosure
+     and must not become clickable. */
+  summary.panel-hd{cursor:pointer; list-style:none}
+  summary.panel-hd::-webkit-details-marker{display:none}
+  /* The auto margin, not space-between, once there are three children: the caret
+     and the heading belong together on the left and the note stays right. */
+  summary.panel-hd h2{margin-right:auto}
+  .pcar{font-family:"IBM Plex Mono",monospace; font-size:14px; color:var(--dim);
+    flex:none; width:13px; line-height:1; transition:transform .12s}
+  details.panel[open] > .panel-hd .pcar{transform:rotate(90deg)}
 
   /* ---------- layout ---------- */
   .layout{display:grid; grid-template-columns:minmax(300px,360px) minmax(0,1fr); gap:14px; align-items:start}
@@ -372,8 +372,8 @@
   .agh::-webkit-details-marker{display:none}
   /* The caret is drawn here rather than left to the UA marker, which sits on the
      baseline of a 13px monospace letter and cannot be aligned with it. */
-  .agh .acar{font-family:"IBM Plex Mono",monospace; font-size:9px; color:var(--faint);
-    flex:none; width:9px; transition:transform .12s}
+  .agh .acar{font-family:"IBM Plex Mono",monospace; font-size:14px; color:var(--dim);
+    flex:none; width:13px; line-height:1; transition:transform .12s}
   .agrade[open] > .agh .acar{transform:rotate(90deg)}
   .agh .grade{font-family:"Space Mono",monospace; font-weight:700; font-size:13px;
     flex:none}
@@ -633,11 +633,6 @@
   <header class="masthead">
     <div class="kicker">player.gdc · read in your browser</div>
     <h1>GD Lens</h1>
-    <p class="lede">Grim Dawn stores your character in an obfuscated binary. Drop one in and this page
-    decrypts it and reports what it holds — gear with its full rolled name, every socket and which are
-    still empty, your attributes, and the file's own block structure.
-    <b>The file never leaves your browser.</b> There is no upload and no server; the parser runs on
-    this page.</p>
   </header>
 
   <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose a player.gdc save file">
@@ -657,8 +652,6 @@
       <button class="linkbtn" id="useown" type="button">Read my own save instead</button>
     </div>
 
-    <div class="verify" id="verify"></div>
-
     <div class="layout">
       <!-- LEFT RAIL: what the character IS. Short and stable, so it sits beside
            the sheet rather than above it -- on a desktop the two together fit
@@ -675,22 +668,24 @@
       <!-- ABOVE Equipped: what the character IS built from reads before what it
            happens to be wearing, and the mastery bars are the shortest panel in
            the rail so the two long lists are not adjacent. -->
-      <section class="panel" id="skillpanel">
-        <div class="panel-hd">
+      <details class="panel" id="skillpanel" open>
+        <summary class="panel-hd">
+          <span class="pcar">▸</span>
           <h2>Mastery</h2>
-        </div>
+        </summary>
         <div class="panel-bd">
           <div class="bars" id="bars"></div>
           <div class="skill-grid" id="skilllist"></div>
         </div>
-      </section>
-      <section class="panel">
-        <div class="panel-hd">
+      </details>
+      <details class="panel" open>
+        <summary class="panel-hd">
+          <span class="pcar">▸</span>
           <h2>Equipped</h2>
           <span class="note" id="socknote"></span>
-        </div>
+        </summary>
         <div class="panel-bd"><div class="rows" id="equip"></div></div>
-      </section>
+      </details>
       </div>
 
       <!-- RIGHT: the 129-row sheet. Its own sections flow into as many columns
@@ -708,7 +703,7 @@
             <button class="tab on" id="tab-sheet" type="button" role="tab"
                     aria-selected="true" aria-controls="view-sheet">Character sheet</button>
             <button class="tab" id="tab-affix" type="button" role="tab"
-                    aria-selected="false" aria-controls="view-affix">Affixes</button>
+                    aria-selected="false" aria-controls="view-affix">Graded Affixes</button>
           </div>
         </div>
         <div class="panel-bd" id="view-sheet" role="tabpanel">
@@ -818,7 +813,7 @@ window.GD_SHEET=[{"section":"Attributes","rows":[{"label":"Physique","kind":"com
 <script>
 /* Verdict targets -- ASSERTED, not derived. See targets.py, which
    carries the reasoning and the warning that goes with it. */
-window.GD_TARGETS={"sigma":25,"resistSigma":80,"residual":0.11,"damageTypes":3,"damageFloor":0.05,"strongKinds":["skill","component","augment"],"corroboration":1,"petBuildDamage":250,"mechanismDominance":0.5,"skillSubtreeShare":0.25,"control":{"Stun Resist":60,"Freeze Resist":40,"Trap Resist":40,"Slow Resist":30,"Life Leech Resist":20,"Petrify Resist":0,"Sleep Resist":0,"Disruption Resist":0,"Energy Leech Resist":0,"Reflect Resist":0},"endgame":{"OffensiveAbility":2500,"DefensiveAbility":2600,"ArmorRating":2800,"Health":16000},"pct":{"PhysicalResist":28,"ChanceToBlock":60},"levelFloor":0.35,"diffScale":{"0":0.55,"1":0.78,"2":1.0},"verdictWeight":{"priority":4,"nice":2,"ignore":0,"avoid":-4},"coveragePower":0.5,"bandCoverage":0.7,"gradeBands":["C","B","A","S"]};
+window.GD_TARGETS={"sigma":25,"resistSigma":80,"residual":0.11,"damageTypes":3,"damageFloor":0.05,"strongKinds":["skill","component","augment"],"corroboration":1,"channelSupport":5,"petBuildDamage":250,"mechanismDominance":0.5,"skillSubtreeShare":0.25,"control":{"Stun Resist":60,"Freeze Resist":40,"Trap Resist":40,"Slow Resist":30,"Life Leech Resist":20,"Petrify Resist":0,"Sleep Resist":0,"Disruption Resist":0,"Energy Leech Resist":0,"Reflect Resist":0},"endgame":{"OffensiveAbility":2500,"DefensiveAbility":2600,"ArmorRating":2800,"Health":16000},"pct":{"PhysicalResist":28,"ChanceToBlock":60},"levelFloor":0.35,"diffScale":{"0":0.55,"1":0.78,"2":1.0},"verdictWeight":{"priority":4,"nice":2,"ignore":0,"avoid":-4},"coveragePower":0.5,"bandCoverage":0.7,"gradeBands":["C","B","A","S"]};
 </script>
 <script>
 /* field -> [label, isPercent] for the equipped-item popouts; see
@@ -2011,6 +2006,116 @@ function drainedTypes(save) {
   return Object.keys(flow).filter(function (t) { return flow[t] >= 100; });
 }
 
+/* A damage CHANNEL is one type delivered one way: `offensiveChaos` is the direct
+   chaos hit, `offensiveSlowFire` is burn, `retaliationPhysical` is physical
+   retaliation. The flat range, the percentage modifier and the DoT duration all
+   hang off one stem, so the stem is the unit a player invests in.
+
+   ⚠️ THE CHANNEL, NOT THE FIELD. Read per field, "flat Bleed" is unfed on a
+   character carrying +164% Bleed -- when flat bleed is exactly the half that
+   would make that 164% pay. Damage is flat x modifier; either half is investment.
+   MIRRORED FROM stat_engine.damage_channel(). */
+var INVEST_PREFIX = ['offensive', 'retaliation'];
+/* % All Damage multiplies every type at once and so is an investment in NONE of
+   them -- counting it would leave no type unfed on any character carrying one. */
+var INVEST_IGNORE = ['offensiveTotalDamage', 'retaliationTotalDamage'];
+var CHANNEL_SUFFIX = ['DurationModifier', 'DurationMin', 'DurationMax',
+                      'Modifier', 'Chance', 'Min', 'Max'];
+
+function damageChannel(f) {
+  var i;
+  if (!INVEST_PREFIX.some(function (p) { return f.indexOf(p) === 0; })) return null;
+  if (INVEST_IGNORE.some(function (p) { return f.indexOf(p) === 0; })) return null;
+  for (i = 0; i < CHANNEL_SUFFIX.length; i++) {
+    var suf = CHANNEL_SUFFIX[i];
+    if (f.length > suf.length && f.slice(-suf.length) === suf) {
+      /* offensiveBase<Type> folds into offensive<Type>: the weapon's own swing
+         and a flat bonus added to it are one channel to invest in. */
+      return f.slice(0, f.length - suf.length).replace('offensiveBase', 'offensive');
+    }
+  }
+  return null;
+}
+
+/* Which damage channels anything on this character feeds, and HOW MANY separate
+   stat lines feed each -- a count since 2026-09-04, because zero support and thin
+   support are both grounds for avoid and the verdict has to tell them apart.
+   See targets.CHANNEL_SUPPORT, including why the unit is the stat line.
+   INVESTMENT, not output:
+   it counts a skill the player BOUGHT whether or not it is running (Cold Snap is
+   off at rest and its 78 Pierce is still three points aimed at Pierce), and it
+   does not go through `contrib`, which is the always-on sum this has to be wider
+   than. MIRRORED FROM stat_engine.damage_investment(). */
+function damageInvestment(save) {
+  var fed = {};
+  /* ⚠️ THE PET SIDE IS NOT THE PLAYER'S DAMAGE. meta()[1] resolves buffSkillName
+     OR petSkillName into one slot, so without this the walk reaches
+     playerclass08/pets/petskill_skeleton_modifier and comes back with +262%
+     Elemental -- which feeds Fire, Cold and Lightning and switches the rule off
+     for three types. The Python engine reached the right answer by accident (it
+     follows buffSkillName alone); the guard is spelled out on both sides so they
+     agree by rule rather than by coincidence. Pet bonuses have a sheet section
+     and a verdict rule of their own. */
+  function take(path, idx) {
+    if (!path || path.indexOf('/pets/') !== -1) return;
+    var st = statsOf(path);
+    if (st) {
+      Object.keys(st).forEach(function (f) {
+        var ch = damageChannel(f);
+        if (!ch) return;
+        var vals = st[f];
+        if (idx < vals.length ? vals[idx] : vals[vals.length - 1]) fed[ch] = (fed[ch] || 0) + 1;
+      });
+    }
+    var pairs = INDEX && INDEX.c && INDEX.c[key(path)];
+    if (!pairs) return;
+    pairs.forEach(function (pr) {
+      /* The same refusal conversions() makes: a ';'-joined type is the editor's
+         dropdown, not a conversion. */
+      if (String(pr[0]).indexOf(';') !== -1 || String(pr[1]).indexOf(';') !== -1) return;
+      var v = idx < pr[2].length ? pr[2][idx] : pr[2][pr[2].length - 1];
+      if (!v) return;
+      /* Conversion INTO a type feeds that type's DIRECT channel and only that
+         one: no conversion field anywhere names a DoT, and retaliation is
+         converted by its own separate fields.
+
+         ⚠️ UNEXERCISED BY EVERY GATE HERE, and said so rather than assumed. On
+         all eight fixtures each conversion target is fed directly as well, so
+         deleting these three lines changes no verdict and both the parity gate
+         and check_properties pass -- mutation-tested. check_properties' Q26h
+         prints the count that would have to become non-zero. */
+      var t = CONV_TYPE[pr[1]] || pr[1];
+      (t === 'Elemental' ? ELEMENTAL_SPLIT : [t]).forEach(function (one) {
+        if (DAMAGE_FIELD[one]) fed[DAMAGE_FIELD[one]] = (fed[DAMAGE_FIELD[one]] || 0) + 1;
+      });
+    });
+  }
+  gearRecords(save).forEach(function (g) {
+    take(g.path, 0);
+    var gs = INDEX && INDEX.i && INDEX.i[key(g.path)];
+    if (gs) { take(gs, 0); take(meta(gs)[1], 0); }
+  });
+  var bon = skillBonuses(save);
+  ((save.skills && save.skills.skills) || []).forEach(function (sk) {
+    if ((sk.level || 0) <= 0) return;
+    if (GRANTED_SKILL.some(function (g) { return sk.name.indexOf(g) !== -1; })) return;
+    var idx = Math.max(0, effectiveLevel(sk.name, sk.level, bon) - 1);
+    take(sk.name, idx);
+    take(meta(sk.name)[1], idx);
+  });
+  /* % Elemental names Fire, Cold and Lightning, so it feeds all three. */
+  Object.keys(fed).forEach(function (ch) {
+    if (ch.indexOf('Elemental') !== -1) {
+      var n = fed[ch];
+      ELEMENTAL_SPLIT.forEach(function (e) {
+        var k = ch.replace('Elemental', e);
+        fed[k] = (fed[k] || 0) + n;
+      });
+    }
+  });
+  return fed;
+}
+
 function damageProfile(save, totals, contrib) {
   var dph = damagePerHit(save, totals), ret = retaliation(save, totals), out = {};
   function add(t, v) { if (v) out[t] = (out[t] || 0) + v; }
@@ -2139,6 +2244,9 @@ function verdictContext(save, totals, resist, petTotals, contrib) {
     hasPets: realPets(save) > 0,
     realPets: realPets(save),
     damage: damageProfile(save, totals, contrib),
+    /* Where the points and sockets WENT, which is a different question from what
+       comes out and has a different answer. */
+    invested: damageInvestment(save),
     /* On a pet build the player's own damage-type rows are noise wholesale. The
        pet CONVERSIONS are not mirrored here -- they only feed the explanation
        text, which is generated on the Python side. */
@@ -2181,6 +2289,30 @@ function verdict(section, row, value, ctx) {
   if ((dtype || mech) && dmg.blind) return 'ignore';
   if (dtype) {
     var wanted = dmg.wanted || [];
+    /* ⚠️ `avoid` -- the one verdict this engine used to refuse to give. `ignore`
+       was covering two different facts: "real, but not one of your types" and
+       "you have put nothing into this anywhere". The second is a statement in the
+       character's own numbers and it is the one worth acting on.
+
+       Checked BEFORE the wanted test, not inside it: a type the build deals can
+       still have a dead channel -- chaos damage and no chaos RETALIATION.
+       WITHHELD when `wanted` is empty: a reader that cannot say what the build IS
+       has no standing to say what it is not. */
+    var inv = ctx.invested || {};
+    /* ⚠️ DEDUPED: a flat row lists Min AND Max, which are one channel, and summing
+       the raw list doubles every flat row's support. */
+    var chans = [];
+    (row.fields || []).map(damageChannel).forEach(function (c) {
+      if (c && chans.indexOf(c) === -1) chans.push(c);
+    });
+    var support = 0;
+    chans.forEach(function (c) { support += inv[c] || 0; });
+    /* Two bands, one verdict: nothing at all is unwanted on any character; thin
+       support is unwanted only for a type the build does not already deal, since
+       `wanted` is settled by another measure and only a wanted type's DEAD
+       channels are up for reconsideration here. */
+    var thin = support < TG().channelSupport && wanted.indexOf(dtype) === -1;
+    if (chans.length && wanted.length && (support === 0 || thin)) return 'avoid';
     if (wanted.indexOf(dtype) === -1) return 'ignore';
   }
   /* The damage engine: what the build is made of, which deficit cannot see. */
@@ -2242,6 +2374,7 @@ root.GDStats = { load: load, statsOf: statsOf, rawIndex: function () { return IN
                  attributes: attributes, verdict: verdict, verdictContext: verdictContext,
                  damageProfile: damageProfile, skillInvestment: skillInvestment,
                  conversionIntent: conversionIntent, damageSources: damageSources,
+                 damageInvestment: damageInvestment, damageChannel: damageChannel,
                  drainedTypes: drainedTypes, ready: function () { return !!INDEX; } };
 })(typeof module !== 'undefined' ? module.exports : window);
 
@@ -2706,17 +2839,10 @@ function text(tag, cls, str) {
 }
 function num(v) { return (v == null ? 0 : v).toLocaleString(); }
 
-function chip(cls, label, value) {
-  var c = text('span', 'vchip ' + (cls || ''));
-  c.appendChild(text('span', null, label));
-  if (value !== undefined) c.appendChild(text('b', null, value));
-  return c;
-}
-
 /* ---- verdict icons -------------------------------------------------------
-   Each sheet row carries a minus (ignore), a dot (nice to have) or a star
-   (priority), computed by GDStats.verdict() -- or a red cross (avoid), which the
-   engine never computes and only the reader can set. The icon is also a CONTROL:
+   Each sheet row carries a minus (ignore), a dot (nice to have), a star
+   (priority) or a red cross (avoid), computed by GDStats.verdict(). The icon is
+   also a CONTROL:
    left click walks VCYCLE forward, right click back. Cycling a row back onto the
    value the engine computed DROPS the override, so returning a row to "whatever
    the algorithm thinks" needs no separate gesture.
@@ -2757,9 +2883,11 @@ var filterState = { verdicts: {}, skills: {}, ready: false };
    the wrap is the only place that is not true. Putting avoid after priority would
    make the same gesture mean "more" three times and "the opposite" once.
 
-   Added 2026-09-03 on the user's instruction. It is the reader's verdict only:
-   the engine never computes `avoid`, because nothing in a character's own numbers
-   says a stat is unwanted -- see targets.VERDICT_WEIGHT. */
+   Added 2026-09-03 on the user's instruction, as the reader's verdict alone. The
+   engine started producing one on 2026-09-04, for a damage channel nothing on the
+   character feeds -- the claim it used to carry here, that nothing in a
+   character's own numbers can say a stat is unwanted, turned out to be too strong.
+   See the dtype branch in stat_engine.verdict_explain(). */
 var VCYCLE = ['avoid', 'ignore', 'nice', 'priority'];
 var VGLYPH = { avoid: '✕', ignore: '−', nice: '●', priority: '★' };
 var overrides = {}, overrideKey = null, overrideChar = null;
@@ -3310,12 +3438,12 @@ function renderAffixes() {
     hits.forEach(function (a) { sec.appendChild(affixRow(a)); });
     host.appendChild(sec);
   });
-  note.textContent = searching
-    ? shown + ' of ' + total + ' affixes match, graded exactly as the loot filter '
-      + 'colours them. An effect list shows only the lines the sheet can name.'
-    : total + ' affixes carry something this character wants, '
-      + 'graded exactly as the loot filter colours them. '
-      + 'An effect list shows only the lines the sheet can name.';
+  /* A STATUS LINE, not a description. The resting blurb is gone (2026-09-04):
+     the grade headings already carry their own counts, so it restated what the
+     page shows and pushed the first band down a line. What is left is the three
+     things the reader cannot see for themselves -- a grading in flight, a
+     failure, and how far a search has narrowed the list. */
+  note.textContent = searching ? shown + ' of ' + total + ' match' : '';
   if (none) {
     none.textContent = shown === 0 ? 'No affix matches that search.' : '';
     none.classList.toggle('hidden', shown !== 0);
@@ -3464,17 +3592,6 @@ function render(save, fileName, isDemo) {
   el('drop').classList.add('hidden');
   el('demobar').classList.toggle('hidden', !isDemo);
   if (isDemo) el('demoname').textContent = window.GD_DEMO_NAME || fileName;
-
-  /* verification strip */
-  var v = el('verify'); v.textContent = '';
-  v.appendChild(chip('', fileName));
-  v.appendChild(chip(save.header.headerChecksumOk ? 'pass' : 'fail',
-    save.header.headerChecksumOk ? 'header checksum ✓' : 'header checksum ✗'));
-  var decoded = save.blocks.filter(function (b) { return DECODED[b.id]; }).length;
-  v.appendChild(chip(save.warnings.length ? 'fail' : 'pass',
-    save.warnings.length ? save.warnings.length + ' block(s) failed' : decoded + ' blocks decoded + verified'));
-  v.appendChild(chip('', 'blocks walked', String(save.blocks.length)));
-  if (save.header.expansion != null) v.appendChild(chip('', 'save version', String(save.header.dataVersion)));
 
   /* identity */
   var h = save.header, bio = save.bio || {}, info = save.info || {};
