@@ -310,10 +310,16 @@
      the star's 19px made it shout over a sheet where most rows are not avoided. */
   .srowwrap > .vi.v-avoid{color:var(--bad); font-size:14px; font-weight:700; --vi-ink:1.5px}
   .srowwrap > .vi:hover{color:var(--ink)}
-  /* A priority row should be findable while scanning a 153-row sheet. */
-  .srow.v-priority > summary .lbl{color:var(--ink); font-weight:600}
-  .srow.v-nice > summary .lbl{color:var(--ink)}
-  .srow.v-ignore > summary .lbl{color:var(--dim)}
+  /* A priority row should be findable while scanning a 153-row sheet.
+     THE LABEL TAKES ITS ICON'S COLOUR, all four verdicts -- user request
+     2026-09-06. `avoid` already did (red label, red cross) and the other three
+     did not, so the icon's scale and the label's were two different languages on
+     one row: ignore and nice were both --ink/--dim regardless of what the glyph
+     beside them said. Each colour below is the same token as the matching
+     `.vi.v-*` rule above; change one and change the other. */
+  .srow.v-priority > summary .lbl{color:var(--accent); font-weight:600}
+  .srow.v-nice > summary .lbl{color:var(--accent-mute)}
+  .srow.v-ignore > summary .lbl{color:var(--faint)}
   .srow.v-avoid > summary .lbl{color:var(--bad)}
   .src{list-style:none; margin:0 0 6px; padding:1px 0 1px 16px; display:flex; flex-direction:column; gap:1px}
   .src li{display:flex; gap:7px; align-items:baseline; font-size:11px; color:var(--dim)}
