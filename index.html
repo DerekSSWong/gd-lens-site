@@ -3404,6 +3404,30 @@ function repaintAll() {
   if (repaintSheet) repaintSheet();
 }
 
+/* A CYCLED ICON MUST RESTYLE ITS ROW, not just itself. The row carries the
+   verdict as a class -- that is what paints the label the icon's colour, and what
+   withholds the dimming from a zero row we are telling you to FIX -- and NOTHING
+   REPAINTS THE SHEET ON A CLICK (see vicon's onChange, and why it exists). So the
+   two decisions the painter makes from the verdict have to be re-applied here, or
+   the icon turns red over a label still coloured for the verdict before it.
+
+   The v- classes to strip come from VCYCLE, not a list written here, so a fifth
+   verdict cannot leave a stale class behind next to the new one.
+
+   Written through `className` rather than classList because that is what the
+   painter sets, and the two are separate properties in the stub DOM the control
+   gate drives -- a classList write there would move nothing the gate can see, and
+   a gate that cannot see the change is not gating it. */
+function setRowVerdict(row, verd, dim) {
+  var keep = String(row.className || '').split(/\s+/).filter(function (c) {
+    return c && c !== 'zero'
+      && !(c.indexOf('v-') === 0 && VCYCLE.indexOf(c.slice(2)) !== -1);
+  });
+  keep.push('v-' + verd);
+  if (dim) keep.push('zero');
+  row.className = keep.join(' ');
+}
+
 /* The icon. Its class string is BUILT, not a literal, so the style gate
    reads whole class names off the stylesheet rather than the "v-" fragment
    a literal would leave behind in the source. */
@@ -4788,13 +4812,18 @@ function render(save, fileName, isDemo) {
           var vk = vkey(sec.section, r.label);
           var verd = overrides[vk] || computedV;
           filterState.verdicts[vk] = verd;
-          var cls = 'srow';
-          if (r.kind === 'blocked') { cls += ' blocked inert'; blocked++; }
           // A zero row is dimmed to 40% -- but a zero we are telling you to FIX is
           // not a boring zero. Life Leech Resist at 0 is a priority and would
           // otherwise render at the same weight as an empty Dodge Chance. Opacity
           // on a row cannot be undone by a child, so the class is withheld instead.
-          else if (!v && verd !== 'priority') cls += ' zero';
+          //
+          // ONE EXPRESSION, because the answer changes when the reader cycles the
+          // icon and setRowVerdict has to re-decide it. A second copy of the rule
+          // down there is how the painted sheet and the clicked one would drift.
+          var dimmed = function (vv) { return r.kind !== 'blocked' && !v && vv !== 'priority'; };
+          var cls = 'srow';
+          if (r.kind === 'blocked') { cls += ' blocked inert'; blocked++; }
+          else if (dimmed(verd)) cls += ' zero';
           if (!rows.length) cls += ' inert';
           cls += ' v-' + verd;
           d.className = cls;
@@ -4854,8 +4883,11 @@ function render(save, fileName, isDemo) {
           // the contributor list underneath.
           var rw = text('div', 'srowwrap');
           rw.appendChild(d);
-          rw.appendChild(vicon(vk, verd, computedV, function (v) {
-            filterState.verdicts[vk] = v;
+          rw.appendChild(vicon(vk, verd, computedV, function (nv) {
+            filterState.verdicts[vk] = nv;
+            // `nv`, not `v`: the parameter used to be named `v` and shadowed the
+            // ROW VALUE this scope already calls `v`, which dimmed() reads.
+            setRowVerdict(d, nv, dimmed(nv));
           }));
           wrap.appendChild(rw); shown++;
         });
