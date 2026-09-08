@@ -5044,8 +5044,17 @@ input.addEventListener('change', function () { if (input.files[0]) load(input.fi
 ['dragleave', 'drop'].forEach(function (t) {
   drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.remove('over'); });
 });
+/* ⚠️ A DROP DOES NOT ALWAYS CARRY A FILE, and the silent version of this cost a
+   session's debugging. Several Linux file managers hand the browser a
+   `text/uri-list` -- a location the page is not allowed to open -- so
+   `dataTransfer.files` is empty. Guarding on it and returning meant the page did
+   nothing and said nothing, which reads as "the save is broken" rather than "use
+   the button". Say so instead; the picker path is right there and works. */
 drop.addEventListener('drop', function (e) {
-  if (e.dataTransfer.files && e.dataTransfer.files[0]) load(e.dataTransfer.files[0]);
+  var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) { load(f); return; }
+  fail('That drag carried a location, not a file — some file managers do this. ' +
+       'Click the box and pick player.gdc instead.');
 });
 
 /* Bundled sample save: decoded and pushed through the SAME parse-and-render path
