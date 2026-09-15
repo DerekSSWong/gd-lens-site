@@ -83,9 +83,7 @@
   .wrap{max-width:1760px; margin:0 auto; padding:20px 18px 48px; display:flex; flex-direction:column; gap:14px}
 
   /* ---------- masthead ---------- */
-  .masthead{display:flex; flex-direction:column; gap:5px; border-bottom:2px solid var(--line-hi); padding-bottom:10px}
-  .kicker{font-family:"IBM Plex Mono",monospace; font-size:10px; font-weight:500;
-    letter-spacing:.2em; text-transform:uppercase; color:var(--accent)}
+  .masthead{border-bottom:2px solid var(--line-hi); padding-bottom:10px}
   h1{font-family:"Space Mono","IBM Plex Mono",monospace; font-weight:700; letter-spacing:-.01em;
     font-size:clamp(19px,2.4vw,25px); line-height:1.05; margin:0; text-wrap:balance}
 
@@ -112,11 +110,11 @@
   .linkbtn{font:600 11px "IBM Plex Mono",monospace; letter-spacing:.06em;
     text-transform:uppercase; color:var(--accent); background:none; border:0; padding:1px 2px;
     cursor:pointer; text-decoration:underline; text-underline-offset:2px}
-  /* The FIRST control takes the auto margin, so the group sits right and the ones
-     after it sit beside it. `margin-left:auto` on every button pushed each onto
-     its own far edge and spread them across the header. */
+  /* Controls after the first sit beside it rather than each taking its own far
+     edge. The auto margin that used to push the GROUP right lived on
+     `.panel-hd > .linkbtn:first-of-type` and is gone -- see the .tabs rule for
+     what that cost once the buttons started being hidden per tab. */
   .linkbtn ~ .linkbtn{margin-left:10px}
-  .panel-hd > .linkbtn:first-of-type{margin-left:auto}
   /* Reset is always present now, so it needs a resting state for "nothing to
      undo" -- dimmed in place rather than hidden, which would move the control
      beside it every time the last override was cleared. */
@@ -361,13 +359,84 @@
   .buffwarn{font-size:10.5px; color:var(--warn); margin:4px 0 0}
 
   /* ---------- tabs + affix catalogue ---------- */
-  .tabs{display:flex; gap:0; margin-left:auto}
+  /* ⚠️ AUTO ON BOTH SIDES, so where the tab bar sits cannot depend on which of
+     its siblings happen to be visible.
+     It was `margin-left:auto` alone, and that worked only because a second auto
+     margin on the first .linkbtn always sat to its right: the two split the free
+     space and the bar landed centred between them. Then the controls became
+     per-tab (reset on the sheet, loot filter on the affix tab) and on the gear
+     tab BOTH are hidden -- leaving one auto margin to eat all the free space and
+     pin the tab bar to the right edge. The affix tab broke the same way for a
+     second reason worth remembering: `:first-of-type` still matched the HIDDEN
+     reset button, so the visible one never took the margin.
+     Symmetric autos centre the bar in whatever space is left over, with no
+     sibling and no `:first-of-type` involved. */
+  .tabs{display:flex; gap:0; margin:0 auto}
   .tab{appearance:none; background:none; border:0; border-bottom:2px solid transparent;
     padding:3px 10px; cursor:pointer; color:var(--dim);
     font:600 11px "IBM Plex Mono",monospace; letter-spacing:.08em; text-transform:uppercase}
   .tab.on{color:var(--ink); border-bottom-color:var(--accent)}
   .tab:hover{color:var(--ink)}
   .tab:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+
+  /* ---- the Farmable Gear tab ----
+     A list, not cards: every row answers the same three questions in the same
+     order (what, why, where), and a grid would put them in different places on
+     every row. Only tokens already defined in all three themes are used here --
+     see the --accent note in the stash's history for what an undefined one
+     costs. */
+  /* The search bar reuses .abtn from the affix tab -- same control, same page,
+     and a second set of rules for one button is how two buttons end up looking
+     almost alike. The input needs its own class only because the affix one is
+     sized for a wider column. */
+  .gsearch{display:flex; align-items:stretch; gap:6px; margin:0 0 6px}
+  .gbox{position:relative; flex:1 1 auto; min-width:0; display:flex; align-items:center}
+  .gbox svg{position:absolute; left:7px; width:11px; height:11px; stroke:var(--faint);
+    fill:none; pointer-events:none}
+  .gbox input{width:100%; min-width:0; background:var(--sunk); color:var(--ink);
+    border:1px solid var(--line); padding:4px 7px 4px 23px;
+    font:400 11.5px "IBM Plex Mono",monospace}
+  .gbox input::placeholder{color:var(--faint)}
+  .gbox input:focus{outline:none; border-color:var(--accent)}
+  /* ADDITIVE CHIPS, like the stash's: none pressed means no opinion, not an
+     empty set. The catalogue needs a ['None'] sentinel because its facet engine
+     runs .some() over an item's values and an empty array deletes the item from
+     every view; nothing here can vanish that way, so there is no sentinel and
+     that asymmetry is deliberate. */
+  .gslots{display:flex; flex-wrap:wrap; gap:4px; margin:0 0 8px}
+  .gslot{appearance:none; cursor:pointer; font:500 10px "IBM Plex Mono",monospace;
+    letter-spacing:.04em; padding:2px 7px; border:1px solid var(--line);
+    background:var(--sunk); color:var(--dim)}
+  .gslot:hover{color:var(--ink); border-color:var(--line-hi)}
+  .gslot[aria-pressed="true"]{background:var(--accent-soft); border-color:var(--accent);
+    color:var(--accent)}
+  .gslot:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+  .gslot .gn{color:var(--faint); margin-left:5px; font-size:9px}
+  .gslot[aria-pressed="true"] .gn{color:var(--accent)}
+  /* The slot the item actually is ("2H Axe"), beside the level. The chip above
+     says the bucket it filters under; this says what it is. */
+  .gearslot{font-size:10px; font-family:"IBM Plex Mono",monospace; color:var(--faint)}
+  .gearnote{margin:2px 0 8px; font-size:10.5px; line-height:1.45;
+    color:var(--dim); max-width:60ch}
+  .gearlist{display:flex; flex-direction:column; gap:10px}
+  .gearitem{border-top:1px solid var(--line-hi); padding-top:7px}
+  .gearhd{display:flex; align-items:baseline; gap:7px}
+  .gearname{font-weight:600; color:var(--ink)}
+  .gearlvl{font-size:10px; font-family:"IBM Plex Mono",monospace; color:var(--dim)}
+  .gearwhy{display:flex; flex-wrap:wrap; gap:5px; margin:4px 0 3px}
+  /* The chip carries the skill's own verdict colour, so a row full of stars
+     reads as a better find than one full of dots without anything being said. */
+  .gearskill{display:inline-flex; align-items:baseline; gap:4px; font-size:10.5px;
+    padding:1px 6px; border-radius:9px; background:var(--sunk);
+    border:1px solid var(--line)}
+  .gearskill .gs{color:var(--ink)}
+  .gearskill .gh{font-size:9px; color:var(--dim)}
+  .gearloc{font-size:10.5px; margin:2px 0 3px}
+  .gearloc .gk{color:var(--dim); margin-right:5px}
+  .gearloc .gv{color:var(--ink)}
+  .gearfx{margin:3px 0 0; padding-left:15px; font-size:10.5px; line-height:1.5;
+    color:var(--dim)}
+  .gearfx li{margin:0}
 
   .agrades{display:flex; flex-direction:column; gap:14px}
   /* A <details> per band since 2026-09-04: six bands stacked open put the low
@@ -475,7 +544,7 @@
     text-shadow:0 1px 0 currentColor, 0 -1px 0 currentColor}
   .lgi.v-avoid{color:var(--bad); font-size:12px; font-weight:700}
   .lgt{white-space:nowrap}
-  .lgh{margin-left:auto; color:var(--faint); font-size:10px}
+  .lgh{color:var(--faint); font-size:10px}
 
   /* ---------- computed tiles ---------- */
   .calc{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px}
@@ -531,6 +600,11 @@
   .skl{font-size:11.5px; padding:1px 0}
   .skl .sname{flex:1 1 auto; min-width:0; white-space:nowrap; overflow:hidden;
     text-overflow:ellipsis}
+  /* A modifier or transmuter of the skill above it. Indented and hairline-ruled
+     on the left rather than boxed: the panel is dense and a second container per
+     child would double its height. */
+  .skl.sklchild{margin-left:9px; padding-left:7px; border-left:1px solid var(--line)}
+  .skl.sklchild > summary .sname{color:var(--dim)}
   /* Same contract as the sheet's icon, and now the same construction: a FIXED
      box so cycling a verdict cannot change the row's height, with the glyph
      CENTRED in it rather than placed by a hand-picked line-height. 16px sits
@@ -635,7 +709,6 @@
 <div class="wrap">
 
   <header class="masthead">
-    <div class="kicker">player.gdc · read in your browser</div>
     <h1>GD Lens</h1>
   </header>
 
@@ -707,7 +780,9 @@
             <button class="tab on" id="tab-sheet" type="button" role="tab"
                     aria-selected="true" aria-controls="view-sheet">Character sheet</button>
             <button class="tab" id="tab-affix" type="button" role="tab"
-                    aria-selected="false" aria-controls="view-affix">Graded Affixes</button>
+                    aria-selected="false" aria-controls="view-affix">Affix Filter</button>
+            <button class="tab" id="tab-gear" type="button" role="tab"
+                    aria-selected="false" aria-controls="view-gear">Farmable Gear</button>
           </div>
         </div>
         <div class="panel-bd" id="view-sheet" role="tabpanel">
@@ -751,6 +826,35 @@
           <p class="secnote" id="affixnote"></p>
           <div class="agrades" id="affixlist"></div>
           <p class="anone hidden" id="affixnone"></p>
+        </div>
+        <div class="panel-bd hidden" id="view-gear" role="tabpanel">
+          <!-- Monster Infrequents whose bonuses name a skill this character has
+               points in. The counterpart to the affix tab: that one says which
+               AFFIX to want on a drop, this one says which DROP to go and get.
+               No search box -- the list is short because the character is the
+               filter, and a second filter over 80 rows is a form. -->
+          <!-- ONE BOX, no AND/OR/NOT rows. The affix tab carries them because it
+               is filtering 1,217 records down; this list is already filtered by
+               the character, so a second grammar over ~60 rows is a form. The
+               MATCHING is the same engine either way -- gd-lib's search.js -- so
+               a rule corrected there reaches both. -->
+          <div class="gsearch">
+            <div class="gbox">
+              <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="gsearch" autocomplete="off"
+                     placeholder="Search items, skills, effects and drop locations…"
+                     aria-label="Search farmable gear">
+            </div>
+            <button type="button" class="abtn" id="gclear" title="Clear the search and slots"
+                    aria-label="Clear the search and slots">
+              <svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+          <!-- Built by ui.js from the slots the corpus actually contains, so a
+               chip can never select nothing. -->
+          <div class="gslots" id="gslots" role="group" aria-label="Equipment slot"></div>
+          <div class="gearnote" id="gearnote"></div>
+          <div class="gearlist" id="gearlist"></div>
         </div>
       </section>
       </div>
@@ -806,6 +910,9 @@ window.GD_SKILLS={"skills/devotion/tier1_10a":"Falcon","skills/devotion/tier1_18
 /* Skills the game caps at rank 1 -- the transmuters. See
    build_skill_max(); ABSENT means no declared cap, never 1. */
 window.GD_SKILL_MAX={"skills/playerclass02/blackwater1b":1,"skills/playerclass02/grenado1b":1,"skills/playerclass02/pets/modifier_necklace_d308_thermitemine":1,"skills/playerclass02/pets/modifier_head_d027_thermitemine":1,"skills/playerclass02/pets/modifier_focus_b019_thermitemine":1,"skills/playerclass02/pets/modifier_hands_d307_thermitemine":1,"skills/playerclass02/pets/modifier_lightningmortar_fxswap":1,"skills/playerclass02/pets/modifier_head_d002_mortartrap":1,"skills/playerclass02/pets/modifier_head_d222_mortartrap":1,"skills/playerclass02/pets/modifier_necklace_d009_mortartrap":1,"skills/playerclass02/pets/modifier_medal_d212_thermitemines":1,"skills/playerclass02/pets/modifier_gun2h_b011_thermitemine":1,"skills/playerclass02/pets/modifier_mortartrap_focusd011":1,"skills/playerclass02/pets/modifier_set_d307_thermitemine":1,"skills/playerclass02/pets/modifier_hands_d005_thermitemine":1,"skills/playerclass02/pets/modifier_eldritchwhispers_set1_demo5":1,"skills/playerclass02/pets/modifier_medal_b011_thermitemine":1,"skills/playerclass02/pets/modifier_medal_d010_thermitemine":1,"skills/playerclass02/pets/modifier_head_b202_thermitemines":1,"skills/playerclass02/pets/modifier_eldritchwhispers_set2_demo3":1,"skills/playerclass02/pets/modifier_thermitemines_coldhidden":1,"skills/playerclass02/pets/modifier_set_d215_mortartrap":1,"skills/playerclass02/pets/modifier_set_d209_thermitemines":1,"skills/playerclass02/pets/thermitemine_skill_suicide":1,"skills/playerclass02/pets/modifier_focus_d214_mortartrap":1,"skills/playerclass02/pets/thermitemine_skill_radius":1,"skills/playerclass02/pets/modifier_chaosmortar_fxswap":1,"skills/playerclass02/pets/modifier_b306d_thermitemine":1,"skills/playerclass02/pets/modifier_gun2h_f203_thermitemine":1,"skills/playerclass02/pets/modifier_medal_d209_mortartrap":1,"skills/playerclass02/pets/modifier_shield_d304_thermitemine":1,"skills/playerclass02/pets/modifier_head_d311_thermitemine":1,"skills/playerclass02/pets/modifier_shield_b308_mortartrap":1,"skills/playerclass02/pets/modifier_medal_b008_thermitemine":1,"skills/playerclass02/pets/traps_innate1":1,"skills/playerclass08/lifetap1b":1,"skills/playerclass08/soulscythe1b":1,"skills/playerclass08/summon_blightbeast1b":1,"skills/playerclass08/soulsiphon1b":1,"skills/playerclass08/pets/petskill_wraithplayer_resists01":1,"skills/playerclass08/pets/petskill_wraithplayer_conversion01":1,"skills/playerclass08/pets/modifier_set_d103_raiseskeletons":1,"skills/playerclass08/pets/modifier_medal_d109_blightbeast":1,"skills/playerclass08/pets/modifier_medal_d213_blightfiend":1,"skills/playerclass08/pets/petskill_skeleton_warlockselfaura":1,"skills/playerclass08/pets/modifier_a303d_skeleton":1,"skills/playerclass08/pets/petskill_wraith_resists01":1,"skills/playerclass08/pets/modifier_eldritchwhispersset2_necro3":1,"skills/playerclass08/pets/modifier_eldritchwhispersset1_necro04":1,"skills/playerclass08/pets/modifier_medal_d208_blightfiend":1,"skills/playerclass08/pets/modifier_head_d005_blightbeast":1,"skills/playerclass09/viremight1b":1,"skills/playerclass09/righteousfervor1b":1,"skills/playerclass09/aegis1b":1,"skills/playerclass09/summon_celestialguardian1b":1,"skills/playerclass09/pets/modifier_hands_d205_conjurecelestialguardian":1,"skills/playerclass09/pets/modifier_necklace_d313_summonguardianofempyrion":1,"skills/playerclass09/pets/petskill_celestialguardian_innate01":1,"skills/playerclass09/pets/modifier_celestialwrath_defaultfx":1,"skills/playerclass09/pets/modifier_set_d215_conjurecelestialguardian":1,"skills/playerclass09/pets/modifier_set_d211_conjurecelestialguardian_02":1,"skills/playerclass09/pets/modifier_necklace_b203_conjurecelestialguardian":1,"skills/playerclass09/pets/modifier_gun2h_b203_conjurecelestialguardian":1,"skills/playerclass09/pets/modifier_focus_d214_conjurecelestialguardian":1,"skills/playerclass09/pets/modifier_eldritchwhispers_set3_oathkeeper2":1,"skills/playerclass09/pets/modifier_eldritchwhispers_set1_oathkeeper3":1,"skills/playerclass09/pets/modifier_head_d213_conjurecelestialguardian":1,"skills/playerclass09/pets/modifier_medal_b304_summonguardianempyrion":1,"skills/playerclass09/pets/modifier_set_d305_summonguardianofempyrion":1,"skills/playerclass09/pets/modifier_necklace_d108_conjurecelestialguardian":1,"skills/playerclass01/overguard1b":1,"skills/playerclass01/shieldhammer1b":1,"skills/playerclass01/bladearc1b":1,"skills/playerclass05/razorwind1b":1,"skills/playerclass05/aetherray1b":1,"skills/playerclass10/wereraven1b":1,"skills/playerclass10/rallyingcry1b":1,"skills/playerclass10/onslaught1b":1,"skills/playerclass10/werewolf1b":1,"skills/playerclass04/nightbladeenchant1b":1,"skills/playerclass04/ringofsteel_mod0":1,"skills/playerclass04/phantomblade_mod0":1,"skills/playerclass04/pets/petskill_bladespirit_radius":1,"skills/playerclass04/pets/modifier_set_d203_bladespirit":1,"skills/playerclass04/pets/modifier_focus_b304_bladespirit":1,"skills/playerclass04/pets/modifier_head_d211_bladespirit":1,"skills/playerclass04/pets/modifier_eldritchwhispers_set2_bladespirit":1,"skills/playerclass04/pets/modifier_focus_d207_bladespirit":1,"skills/playerclass04/pets/modifier_set_c302_bladespirit":1,"skills/playerclass04/pets/modifier_necklace_d016_bladespirit":1,"skills/playerclass04/pets/modifier_head_d010_bladespirit":1,"skills/playerclass04/pets/modifier_shield_b201_bladespirit":1,"skills/playerclass04/pets/modifier_gun2h_d104_bladespirit":1,"skills/playerclass04/pets/petskill_bladeswarm_innate1":1,"skills/playerclass04/pets/modifier_medal_c307_bladespirit":1,"skills/playerclass06/savagestrike1b":1,"skills/playerclass06/stormtotem01b_petmodifier":1,"skills/playerclass06/pets/modifier_mace2h_b008_wendigototem":1,"skills/playerclass06/pets/modifier_head_b102_summonbriarthorn":1,"skills/playerclass06/pets/modifier_head_d125_wendigototem":1,"skills/playerclass06/pets/modifier_medal_d208_briarthorn":1,"skills/playerclass06/pets/modifier_necklace_d317_winddevil":1,"skills/playerclass06/pets/modifier_head_b306_wendigototem":1,"skills/playerclass06/pets/modifier_aetherwinddevil_fxswap":1,"skills/playerclass06/pets/modifier_necklace_b004_summonbriarthorn":1,"skills/playerclass06/pets/petskill_totem_immunities":1,"skills/playerclass06/pets/modifier_medal_d213_briarthorn":1,"skills/playerclass06/pets/modifier_hands_d208_winddevil":1,"skills/playerclass06/pets/modifier_head_d026_stormtotem":1,"skills/playerclass06/pets/modifier_eldritchwhispers_set2_shaman2":1,"skills/playerclass06/pets/modifier_head_d212_stormtotem":1,"skills/playerclass06/pets/modifier_a303d_winddevil":1,"skills/playerclass06/pets/modifier_b301d_stormtotem":1,"skills/playerclass06/pets/modifier_medal_b306_wendigototem":1,"skills/playerclass06/pets/modifier_hands_c029_winddevil":1,"skills/playerclass06/pets/modifier_head_d226_winddevil":1,"skills/playerclass06/pets/modifier_focus_d219_winddevil":1,"skills/playerclass06/pets/modifier_set_d307_stormtotem":1,"skills/playerclass06/pets/modifier_head_b306_wendigototemb":1,"skills/playerclass06/pets/petskill_totem_radius":1,"skills/playerclass06/pets/modifier_eldritchwhispers_set1_shaman5":1,"skills/playerclass06/pets/modifier_mace2h_d207_winddevil":1,"skills/playerclass06/pets/modifier_a304d_stormtotem":1,"skills/playerclass06/pets/modifier_head_d019_winddevil":1,"skills/playerclass06/pets/modifier_set_d209_winddevil":1,"skills/playerclass06/pets/modifier_hands_d114_wendigototem":1,"skills/playerclass06/pets/modifier_eldritchwhispersset2_shaman4":1,"skills/playerclass06/pets/modifier_axe2h_b304_wendigototem":1,"skills/playerclass06/pets/petskill_winddevil_radius":1,"skills/playerclass06/pets/modifier_hands_d311_stormtotem":1,"skills/playerclass06/pets/modifier_medal_d012_summonbriarthorn":1,"skills/playerclass06/pets/modifier_set_d219_winddevil":1,"skills/playerclass06/pets/modifier_eldritchwhispers_set3_shaman1":1,"skills/playerclass06/pets/modifier_medal_f108_summonbriarthorn":1,"skills/playerclass06/pets/modifier_medal_d001_wendigototem":1,"skills/playerclass06/pets/modifier_head_d216_winddevil":1,"skills/playerclass06/pets/modifier_focus_b306_stormtotem":1,"skills/playerclass06/pets/modifier_focus_b009_summonbriarthorn":1,"skills/playerclass06/pets/modifier_focus_b103_summonmanticore":1,"skills/playerclass06/pets/modifier_necklace_d308_winddevil":1,"skills/playerclass06/pets/modifier_head_d319_summonbriarthorn":1,"skills/playerclass06/pets/modifier_set_d119_wendigototem":1,"skills/playerclass06/pets/modifier_head_d311_stormtotem":1,"skills/playerclass06/pets/modifier_medal_b106_summonbriarthorn":1,"skills/playerclass06/pets/modifier_firewinddevil_fxswap":1,"skills/playerclass06/pets/modifier_chaoswinddevil_fxswap":1,"skills/playerclass06/pets/modifier_head_d119_stormtotem":1,"skills/playerclass06/pets/petskill_totemstorm_transmuter":1,"skills/playerclass06/pets/modifier_head_d002_stormtotem":1,"skills/playerclass06/pets/modifier_head_b103_wendigototem":1,"skills/playerclass06/pets/modifier_acidwinddevil_fxswap":1,"skills/playerclass06/pets/modifier_vitalitywinddevil_fxswap":1,"skills/playerclass03/evileye1b":1,"skills/playerclass03/pox1b":1,"skills/playerclass03/pets/modifier_head_d319_summonhellhound":1,"skills/playerclass03/pets/modifier_head_b201_summonhellhound":1,"skills/playerclass03/pets/modifier_medal_d012_summonhellhound":1,"skills/playerclass03/pets/modifier_medal_f108_summonhellhound":1,"skills/playerclass03/pets/modifier_set_d315_summonhellhound":1,"skills/playerclass03/pets/modifier_medal_b306_summonfamiliar":1,"skills/playerclass03/pets/modifier_necklace_d001_summonfamiliar":1,"skills/playerclass03/pets/modifier_set_d307_summonfamiliar":1,"skills/playerclass03/pets/modifier_head_d318_summonhellhound":1,"skills/playerclass03/pets/modifier_necklace_d004_summonhellhound":1,"skills/playerclass03/pets/modifier_focus_b307_summonfamiliar":1,"skills/playerclass03/pets/modifier_hellfireaura_defaultfx":1,"skills/playerclass03/pets/modifier_eldritchwhispersset2_occultist2":1,"skills/playerclass03/pets/modifier_sword2h_d307_summonhellhound":1,"skills/playerclass03/pets/modifier_eldritchwhispers_set1_occultist3":1,"skills/playerclass03/pets/modifier_head_d311_summonfamiliar":1,"skills/playerclass03/pets/modifier_focus_b107_summonhellhound":1,"skills/playerclass03/pets/modifier_hellfireaura_icefx":1,"skills/playerclass03/pets/modifier_set_d003_summonhellhound":1,"skills/playerclass03/pets/modifier_necklace_d115_summonhellhound":1,"skills/playerclass03/pets/modifier_necklace_b004_summonhellhound":1,"skills/playerclass03/pets/modifier_head_c210_summonfamiliar":1,"skills/playerclass03/pets/modifier_eldritchwhispers_set3_occultist1":1,"skills/playerclass03/pets/modifier_medal_b012_summonhellhound":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b305g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b308d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b308g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b303h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b301f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b305h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b304h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b303d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b304d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b302f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/a304d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b305d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/_blankmodifier":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b303g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/a301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b305f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b302g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/a303d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b304f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b303f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b307h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b307d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/a306d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b302d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b308h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/a305g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b304g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/a305d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b302h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b308f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b301h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b307g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b301g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/a302d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass02/b307f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b308d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b308g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b303h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b301f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b304h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b303d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b304d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b302f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/a304d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b305d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b306d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/_blankmodifier":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b306f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b303g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/a301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b305f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b302g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b304f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b303f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b307h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b307d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/a306d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b302d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b308h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/a305g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b304g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b306h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/a305d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b302h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b308f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b301h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b307g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/a306g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b306g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b301g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/a302d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass08/b307f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b305g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b308d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b308g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b303h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b301f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b305h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b304h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b303d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/a306f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b304d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b302f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/a304d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b305d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b306d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/_blankmodifier":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b306f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b303g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/a301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b305f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b302g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/a303d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b304f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/a306e":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b303f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b307h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b307d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/a306d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b302d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b308h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/a305g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b304g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b306h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/a305d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b302h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b308f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b301h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b307g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/a306g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b306g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b301g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/a302d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass09/b307f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b305g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b308d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b308g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b303h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b301f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b305h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/a304g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b304h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b303d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/a306f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b304d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b302f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/a304d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b305d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b306d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/_blankmodifier":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b306f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b303g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/a301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b305f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b302g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/a303d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b304f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/a306e":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b303f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b307h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b307d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/a306d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b302d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b308h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/a305g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b304g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b306h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/a305d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b302h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b308f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b301h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b307g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/a306g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b306g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b301g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/a302d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass01/b307f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b305g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b308d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b308g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b303h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b301f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b305h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b304h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b303d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b304d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b302f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/a304d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b305d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b306d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/_blankmodifier":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b306f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b303g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/a301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b305f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b302g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/a303d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b304f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b303f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b307h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b307d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/a306d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b302d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b308h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b304g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b306h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/a305d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b302h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b308f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b301h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b307g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b306g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b301g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/a302d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass05/b307f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b305g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b308d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b308g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b303h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b301f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b305h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b304h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b303d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b304d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b302f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/a304d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b305d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b306d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/_blankmodifier":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b306f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b303g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/a301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b305f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b302g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/a303d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b304f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b303f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b307h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b307d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/a306d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b302d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b308h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/a305g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b304g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b306h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/a305d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b302h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b308f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b301h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b307g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/a306g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b306g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b301g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/a302d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass10/b307f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b305g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/a305f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b308d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b308g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b303h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b301f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b305h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/a304g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b304h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b303d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/a304e":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/a306f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b304d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b302f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/a304d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b305d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b306d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/_blankmodifier":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b306f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b303g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/a301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b305f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b302g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/a303d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b304f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/a306e":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b303f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b307h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/a303f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b307d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/a306d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b302d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b308h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/a305g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/a305h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b304g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/a305e":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b306h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/a303g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/a305d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b302h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/a303e":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b308f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b301h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b307g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/a304f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/a306g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b306g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b301g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/a302d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass04/b307f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b305g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b308d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b301f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b305h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b304h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b303d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/a306h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b304d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b302f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b305d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b306d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/_blankmodifier":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b306f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/a301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b305f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b302g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b304f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b303f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b307h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b307d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/a306d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b302d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/a305g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/a305h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b304g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b306h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/a305d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b302h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b308f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b301h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b307g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/a306g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b306g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b301g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/a302d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass06/b307f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b308d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b308g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b303h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b301f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b303d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b304d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b302f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/a304d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b305d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b306d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/_blankmodifier":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b306f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b303g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/a301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b305f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b302g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/a303d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b304f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b303f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b307h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b307d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/a306d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b302d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b308h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b306h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/a305d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b302h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b308f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b301h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b307g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b306g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b301g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/a302d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass03/b307f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b305g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/a305f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b308d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b308g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b301f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b305h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b304h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/a304e":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/a306f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/a306h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b304d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b305d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b306d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/_blankmodifier":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b306f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/a301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b305f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/a303d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b304f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/a306e":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b307h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b307d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/a306d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b308h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b304g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/a305e":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b306h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b308f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b301h":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b307g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/a304f":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/a306g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b301d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b306g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b301g":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/a302d":1,"skills/itemskillsgdx3/skillmodifiers/ascended/playerclass07/b307f":1,"skills/playerclass07/lightningnet1b":1,"skills/playerclass07/arcaneseal1b":1,"skills/playerclass07/hunteraura1b":1,"skills/playerclass07/purifyingflame1b":1,"skills/playerclass07/pets/modifier_shield_b311_runeofhagarrad":1,"skills/playerclass07/pets/modifier_set_d205_inquisitorseal":1,"skills/playerclass07/pets/modifier_focus_b303_runeofhagarrad":1,"skills/playerclass07/pets/modifier_set_d203_runeofhagarrad":1,"skills/playerclass07/pets/modifier_gun2h_d203_inquisitorseal":1,"skills/playerclass07/pets/modifier_axe1h_b203_inquisitorseal":1,"skills/playerclass07/pets/modifier_set_d113_runeofhagarrad":1,"skills/playerclass07/pets/modifier_necklace_d006_runeofhagarrad":1,"skills/playerclass07/pets/modifier_head_b208_runeofhagarrad":1,"skills/playerclass07/pets/modifier_focus_f302_runeofhagarrad":1,"skills/playerclass07/pets/modifier_necklace_d121_runeofhagarrad":1,"skills/playerclass07/pets/modifier_head_d120_runeofkalastor":1,"skills/playerclass07/pets/modifier_sword2h_d106_inquisitorseal2":1,"skills/playerclass07/pets/petskill_arcaneseal_transmuter":1,"skills/playerclass07/pets/modifier_medal_b015_inquisitorseal":1,"skills/playerclass07/pets/modifier_medal_b302_runeofhagarrad":1,"skills/playerclass07/pets/modifier_hands_d308_runeofkalastor":1,"skills/playerclass07/pets/modifier_head_d114_runeofkalastor":1,"skills/playerclass07/pets/modifier_eldritchwhispersset2_inquisitor4":1,"skills/playerclass07/pets/modifier_necklace_f207_runeofhagarrad":1,"skills/playerclass07/pets/modifier_a304d_runeofkalastor":1,"skills/playerclass07/pets/modifier_set_d104_runeofkalastor":1,"skills/playerclass07/pets/modifier_medal_d112_runeofkalastor":1,"skills/playerclass07/pets/modifier_a305d_runeofhagarrad":1,"skills/playerclass07/pets/modifier_set_d113_runeofkalastor":1,"skills/playerclass07/pets/modifier_medal_b011_runeofkalastor":1,"skills/playerclass07/pets/petskill_arcaneseal_radius":1,"skills/playerclass07/pets/modifier_b303d_runeofkalastor":1,"skills/playerclass07/pets/modifier_set_d304_runeofhagarrad":1,"skills/playerclass07/pets/modifier_set_d121_runeofkalastor":1,"skills/playerclass07/pets/modifier_b302d_runeofhagarrad":1,"skills/playerclass07/pets/modifier_set_d113_inquisitorseal":1,"skills/playerclass07/pets/modifier_head_d213_inquisitorseal2":1,"skills/playerclass07/pets/modifier_eldritchwhispersset1_inquisitor3":1,"skills/playerclass07/pets/modifier_eldritchwhispersset3_inquisitor2":1,"skills/playerclass07/pets/modifier_focus_d209_runeofkalastor":1,"skills/playerclass07/pets/modifier_focus_b206_concussiverune":1,"skills/playerclass07/pets/modifier_head_b106_runeofkalastor":1,"skills/playerclass07/pets/modifier_shield_b010_runeofkalastor":1,"skills/playerclass07/pets/modifier_necklace_d314_inquisitorseal":1,"skills/playerclass07/pets/modifier_focus_b111_inquisitorseal":1,"skills/playerclass07/pets/modifier_medal_d312_runeofhagarrad":1,"skills/playerclass07/pets/modifier_gun2h_b010_runeofkalastor":1,"skills/playerclass07/pets/modifier_head_d205_runeofkalastor":1,"skills/playerclass07/pets/modifier_eldritchwhispersset1_inquisitor5":1};
+/* Skill key -> [panel row, panel column, parent key]. The mastery
+   panel's own layout; see build_skill_tree(). */
+window.GD_SKILL_TREE={"skills/playerclass01/cadence1":[319,246,""],"skills/playerclass01/cadence2":[319,486,"skills/playerclass01/cadence1"],"skills/playerclass01/cadence3":[319,806,"skills/playerclass01/cadence1"],"skills/playerclass01/shieldhammer1":[179,246,""],"skills/playerclass01/shieldhammer2":[179,486,"skills/playerclass01/shieldhammer1"],"skills/playerclass01/shieldhammer3":[179,646,"skills/playerclass01/shieldhammer1"],"skills/playerclass01/passive1":[459,326,""],"skills/playerclass01/passive2":[459,486,""],"skills/playerclass01/passive3":[459,646,""],"skills/playerclass01/passive4":[459,806,""],"skills/playerclass01/willtolive1":[389,326,""],"skills/playerclass01/fightingspirit1":[109,326,""],"skills/playerclass01/blitz1":[249,406,""],"skills/playerclass01/blitz2":[249,726,"skills/playerclass01/blitz1"],"skills/playerclass01/bladearc1":[109,406,""],"skills/playerclass01/bladearc2":[109,726,"skills/playerclass01/bladearc1"],"skills/playerclass01/stancedefensive":[389,886,""],"skills/playerclass01/stanceoffensive":[109,886,""],"skills/playerclass01/fieldcommand1":[389,566,""],"skills/playerclass01/fieldcommand2":[389,726,"skills/playerclass01/fieldcommand1"],"skills/playerclass01/weaponpool1":[39,246,""],"skills/playerclass01/weaponpool2":[39,406,"skills/playerclass01/weaponpool1"],"skills/playerclass01/warcry1":[39,566,""],"skills/playerclass01/warcry2":[39,806,"skills/playerclass01/warcry1"],"skills/playerclass01/overguard1":[389,406,""],"skills/playerclass01/counterstrike1":[249,806,""],"skills/playerclass01/cadence1b":[281,326,"skills/playerclass01/cadence1"],"skills/playerclass01/bladearc1b":[71,486,"skills/playerclass01/bladearc1"],"skills/playerclass01/warcry1b":[71,646,"skills/playerclass01/warcry1"],"skills/playerclass01/shieldhammer1b":[211,326,"skills/playerclass01/shieldhammer1"],"skills/playerclass01/passiveshield":[459,406,""],"skills/playerclass01/overguard1b":[389,486,"skills/playerclass01/overguard1"],"skills/playerclass02/blastshield1":[39,326,""],"skills/playerclass02/blastshield2":[39,566,"skills/playerclass02/blastshield1"],"skills/playerclass02/passive2":[249,886,"skills/playerclass02/stunjacks1"],"skills/playerclass02/flamestrike1":[109,246,""],"skills/playerclass02/flamestrike2":[109,406,"skills/playerclass02/flamestrike1"],"skills/playerclass02/flamestrike3":[109,646,"skills/playerclass02/flamestrike1"],"skills/playerclass02/flamestrike4":[109,886,"skills/playerclass02/flamestrike1"],"skills/playerclass02/stunjacks1":[249,246,""],"skills/playerclass02/stunjacks2":[249,486,"skills/playerclass02/stunjacks1"],"skills/playerclass02/thermitemines1":[319,726,""],"skills/playerclass02/thermitemines2_petmod":[319,886,"skills/playerclass02/thermitemines1"],"skills/playerclass02/flashbang1":[389,246,""],"skills/playerclass02/flashbang2":[389,406,"skills/playerclass02/flashbang1"],"skills/playerclass02/grenado1":[389,486,""],"skills/playerclass02/grenado2":[389,646,"skills/playerclass02/grenado1"],"skills/playerclass02/grenado3":[389,806,"skills/playerclass02/grenado1"],"skills/playerclass02/mortartrap1":[459,646,""],"skills/playerclass02/mortartrap2_petmod":[459,726,"skills/playerclass02/mortartrap1"],"skills/playerclass02/mortartrap3_petmod":[459,886,"skills/playerclass02/mortartrap1"],"skills/playerclass02/blackwater1":[179,326,""],"skills/playerclass02/blackwater2":[179,566,"skills/playerclass02/blackwater1"],"skills/playerclass02/blackwater3":[179,806,"skills/playerclass02/blackwater1"],"skills/playerclass02/canisterbomb1":[249,566,""],"skills/playerclass02/canisterbomb2":[249,806,"skills/playerclass02/canisterbomb1"],"skills/playerclass02/passive1":[39,726,""],"skills/playerclass02/vindictiveflame1":[459,406,""],"skills/playerclass02/vindictiveflame2":[459,566,"skills/playerclass02/vindictiveflame1"],"skills/playerclass02/stunjacks1b":[281,326,"skills/playerclass02/stunjacks1"],"skills/playerclass02/canisterbomb1b":[211,646,"skills/playerclass02/canisterbomb1"],"skills/playerclass02/flamestrike2b":[142,486,"skills/playerclass02/flamestrike1"],"skills/playerclass02/blackwater1b":[211,406,"skills/playerclass02/blackwater1"],"skills/playerclass02/flamestrike2c":[71,486,"skills/playerclass02/flamestrike1"],"skills/playerclass02/grenado1b":[351,566,"skills/playerclass02/grenado1"],"skills/playerclass03/pox1":[249,326,""],"skills/playerclass03/pox2":[249,566,"skills/playerclass03/pox1"],"skills/playerclass03/pox3":[249,806,"skills/playerclass03/pox1"],"skills/playerclass03/summon_raven1":[389,246,""],"skills/playerclass03/summon_raven2_petmodifier":[389,326,"skills/playerclass03/summon_raven1"],"skills/playerclass03/summon_raven3_petmodifier":[389,486,"skills/playerclass03/summon_raven1"],"skills/playerclass03/summon_raven4_petmodifier":[389,646,"skills/playerclass03/summon_raven1"],"skills/playerclass03/summon_hellhound1":[459,406,""],"skills/playerclass03/summon_hellhound2_petmodifier":[459,566,"skills/playerclass03/summon_hellhound1"],"skills/playerclass03/summon_hellhound3_petmodifier":[459,726,"skills/playerclass03/summon_hellhound1"],"skills/playerclass03/summon_hellhound4_petmodifier":[459,886,"skills/playerclass03/summon_hellhound1"],"skills/playerclass03/sigilofdestruction1":[39,406,""],"skills/playerclass03/sigilofdestruction2":[39,646,"skills/playerclass03/sigilofdestruction1"],"skills/playerclass03/doombolt1":[39,806,""],"skills/playerclass03/evileye1":[179,246,""],"skills/playerclass03/evileye2":[179,326,"skills/playerclass03/evileye1"],"skills/playerclass03/evileye3":[179,566,"skills/playerclass03/evileye1"],"skills/playerclass03/evileye4":[179,806,"skills/playerclass03/evileye1"],"skills/playerclass03/bloodofdreeg1":[319,486,""],"skills/playerclass03/bloodofdreeg2":[319,726,"skills/playerclass03/bloodofdreeg1"],"skills/playerclass03/curse1":[319,246,""],"skills/playerclass03/curse2":[319,406,"skills/playerclass03/curse1"],"skills/playerclass03/witchfire1":[109,326,""],"skills/playerclass03/witchfire2":[109,646,"skills/playerclass03/witchfire1"],"skills/playerclass03/bondsofbysmiel1":[389,726,""],"skills/playerclass03/bondsofbysmiel2":[389,886,"skills/playerclass03/bondsofbysmiel1"],"skills/playerclass03/possession1":[109,886,""],"skills/playerclass03/evileye1b":[211,406,"skills/playerclass03/evileye1"],"skills/playerclass03/witchfire1b":[71,486,"skills/playerclass03/witchfire1"],"skills/playerclass03/pox1b":[211,486,"skills/playerclass03/pox1"],"skills/playerclass03/bloodofdreeg1b":[351,566,""],"skills/playerclass04/phantomblade":[109,326,""],"skills/playerclass04/phantomblade_mod1":[109,486,"skills/playerclass04/phantomblade"],"skills/playerclass04/phantomblade_mod2":[109,726,"skills/playerclass04/phantomblade"],"skills/playerclass04/passive1":[459,406,""],"skills/playerclass04/passive2":[459,566,"skills/playerclass04/passive1"],"skills/playerclass04/passive3":[459,726,"skills/playerclass04/passive1"],"skills/playerclass04/bladebarrier1":[389,566,""],"skills/playerclass04/ringofsteel":[179,566,""],"skills/playerclass04/ringofsteel_mod1":[179,806,"skills/playerclass04/ringofsteel"],"skills/playerclass04/nightbladeenchant1":[319,326,""],"skills/playerclass04/nightbladeenchant2":[319,486,"skills/playerclass04/nightbladeenchant1"],"skills/playerclass04/nightbladeenchant3":[319,726,"skills/playerclass04/nightbladeenchant1"],"skills/playerclass04/bladetrap1":[389,646,""],"skills/playerclass04/bladetrap2":[389,806,"skills/playerclass04/bladetrap1"],"skills/playerclass04/veilofshadows1":[389,246,""],"skills/playerclass04/veilofshadows2":[389,486,"skills/playerclass04/veilofshadows1"],"skills/playerclass04/eviscerate1":[179,246,""],"skills/playerclass04/eviscerate2":[179,486,"skills/playerclass04/eviscerate1"],"skills/playerclass04/summon_bladespirit":[109,886,""],"skills/playerclass04/wpattack0":[39,246,""],"skills/playerclass04/wpattack1":[39,326,"skills/playerclass04/wpattack0"],"skills/playerclass04/wpattack2":[39,486,"skills/playerclass04/wpattack0"],"skills/playerclass04/wpattack3":[39,646,"skills/playerclass04/wpattack0"],"skills/playerclass04/wpattack4":[39,406,"skills/playerclass04/wpattack1"],"skills/playerclass04/wpattack5":[39,886,"skills/playerclass04/wpattack0"],"skills/playerclass04/shadowstrike":[249,406,""],"skills/playerclass04/shadowstrike_mod1":[249,646,"skills/playerclass04/shadowstrike"],"skills/playerclass04/shadowstrike_mod2":[249,886,"skills/playerclass04/shadowstrike"],"skills/playerclass04/phantomblade_mod0":[142,406,"skills/playerclass04/phantomblade"],"skills/playerclass04/nightbladeenchant1b":[351,406,"skills/playerclass04/nightbladeenchant1"],"skills/playerclass04/ringofsteel_mod0":[141,646,"skills/playerclass04/ringofsteel"],"skills/playerclass05/aetherray1":[319,646,""],"skills/playerclass05/aetherray2":[319,886,"skills/playerclass05/aetherray1"],"skills/playerclass05/arcanemissile":[249,246,""],"skills/playerclass05/arcanemissile2":[249,486,"skills/playerclass05/arcanemissile"],"skills/playerclass05/arcanemissile3":[249,646,"skills/playerclass05/arcanemissile"],"skills/playerclass05/arcanemissile4":[249,806,"skills/playerclass05/arcanemissile"],"skills/playerclass05/devastation":[249,886,""],"skills/playerclass05/razorwind1":[179,326,""],"skills/playerclass05/razorwind2":[179,566,"skills/playerclass05/razorwind1"],"skills/playerclass05/nullification":[459,566,""],"skills/playerclass05/passive01":[459,246,""],"skills/playerclass05/passive02":[459,486,""],"skills/playerclass05/passive03":[459,726,""],"skills/playerclass05/passive04":[459,806,""],"skills/playerclass05/arcaneshield":[109,406,""],"skills/playerclass05/elementalinfusion1":[39,246,""],"skills/playerclass05/elementalinfusion2":[39,406,"skills/playerclass05/elementalinfusion1"],"skills/playerclass05/skyshard1":[389,406,""],"skills/playerclass05/skyshard2":[389,566,"skills/playerclass05/skyshard1"],"skills/playerclass05/skyshard3":[389,806,"skills/playerclass05/skyshard1"],"skills/playerclass05/sphereofprotection1":[109,486,""],"skills/playerclass05/sphereofprotection2":[109,726,"skills/playerclass05/sphereofprotection1"],"skills/playerclass05/mindovermatter1":[109,886,""],"skills/playerclass05/mindovermatter2":[389,886,"skills/playerclass05/mindovermatter1"],"skills/playerclass05/chillingsurge":[319,326,""],"skills/playerclass05/chillingsurge2":[319,566,"skills/playerclass05/chillingsurge"],"skills/playerclass05/mindovermatter1b":[142,806,""],"skills/playerclass05/razorwind1b":[211,406,"skills/playerclass05/razorwind1"],"skills/playerclass05/aetherray1b":[281,726,"skills/playerclass05/aetherray1"],"skills/playerclass05/elementalinfusion1b":[71,326,"skills/playerclass05/elementalinfusion1"],"skills/playerclass05/elementalinfusion3":[39,646,"skills/playerclass05/elementalinfusion1"],"skills/playerclass06/savagery1":[179,246,""],"skills/playerclass06/savagery2":[179,486,"skills/playerclass06/savagery1"],"skills/playerclass06/savagery3":[179,726,"skills/playerclass06/savagery1"],"skills/playerclass06/savagestrike1":[109,326,""],"skills/playerclass06/savagestrike2":[109,486,"skills/playerclass06/savagestrike1"],"skills/playerclass06/savagestrike3":[109,646,"skills/playerclass06/savagestrike1"],"skills/playerclass06/totem1":[39,566,""],"skills/playerclass06/totem2_petmodifier":[39,806,"skills/playerclass06/totem1"],"skills/playerclass06/squall1":[249,406,""],"skills/playerclass06/squall2":[249,566,"skills/playerclass06/squall1"],"skills/playerclass06/squall3":[249,806,"skills/playerclass06/squall1"],"skills/playerclass06/natureblessing1":[459,326,""],"skills/playerclass06/naturesblessing2":[459,486,"skills/playerclass06/natureblessing1"],"skills/playerclass06/naturesblessing3":[459,646,"skills/playerclass06/natureblessing1"],"skills/playerclass06/devouringswarm1":[319,246,""],"skills/playerclass06/graspingvines1":[319,326,""],"skills/playerclass06/graspingvines2":[319,646,"skills/playerclass06/graspingvines1"],"skills/playerclass06/summon_briarthorn1":[389,406,""],"skills/playerclass06/summon_briarthorn2_petmodifier":[389,566,"skills/playerclass06/summon_briarthorn1"],"skills/playerclass06/summon_briarthorn3_petmodifier":[389,806,"skills/playerclass06/summon_briarthorn1"],"skills/playerclass06/summon_manticore1":[319,886,""],"skills/playerclass06/passive01":[39,246,""],"skills/playerclass06/devouringswarm1b":[282,326,""],"skills/playerclass06/primalbond01":[389,886,""],"skills/playerclass06/weaponpool01":[39,406,"skills/playerclass06/passive01"],"skills/playerclass06/weaponpool02":[39,486,"skills/playerclass06/passive01"],"skills/playerclass06/stormcaller1":[109,886,""],"skills/playerclass06/savagery1b":[211,326,"skills/playerclass06/savagery1"],"skills/playerclass06/savagestrike1b":[141,406,"skills/playerclass06/savagestrike1"],"skills/playerclass06/stormtotem01":[109,726,""],"skills/playerclass06/stormtotem01b_petmodifier":[141,806,"skills/playerclass06/stormtotem01"],"skills/playerclass07/arcaneseal1":[389,646,""],"skills/playerclass07/arcaneseal2_petmodifier":[389,806,""],"skills/playerclass07/auracensure1":[319,886,""],"skills/playerclass07/auraconviction1":[109,886,""],"skills/playerclass07/concussiverune1":[459,486,""],"skills/playerclass07/hunteraura1":[109,406,""],"skills/playerclass07/hunteraura2":[109,566,""],"skills/playerclass07/hunteraura3":[109,726,""],"skills/playerclass07/icerune":[319,326,""],"skills/playerclass07/icerune2_petmodifier":[319,486,""],"skills/playerclass07/icerune3_petmodifier":[319,726,""],"skills/playerclass07/lightningnet1":[389,246,""],"skills/playerclass07/lightningnet2":[389,486,""],"skills/playerclass07/passive01":[39,246,""],"skills/playerclass07/passive02":[459,406,""],"skills/playerclass07/passive03":[459,806,""],"skills/playerclass07/purifyingflame1":[249,406,""],"skills/playerclass07/purifyingflame2":[249,566,""],"skills/playerclass07/purifyingflame3":[249,726,""],"skills/playerclass07/purifyingflame4":[249,886,""],"skills/playerclass07/voiceofcommand1":[179,806,""],"skills/playerclass07/wordofpain1":[179,246,""],"skills/playerclass07/wordofpain2":[179,406,""],"skills/playerclass07/wordofpain3":[179,646,""],"skills/playerclass07/wpattack01":[39,326,""],"skills/playerclass07/wpattack02":[39,566,""],"skills/playerclass07/wpattack03":[39,806,""],"skills/playerclass07/lightningnet1b":[421,326,""],"skills/playerclass07/purifyingflame1b":[211,486,""],"skills/playerclass07/hunteraura1b":[71,486,""],"skills/playerclass07/concussiverune2_petmodifier":[459,646,""],"skills/playerclass07/arcaneseal1b":[421,726,""],"skills/playerclass08/soulsiphon1":[39,646,""],"skills/playerclass08/soulsiphon2":[39,806,""],"skills/playerclass08/illomen1":[389,406,""],"skills/playerclass08/masterofdeath1":[389,886,""],"skills/playerclass08/lifetap1":[109,246,""],"skills/playerclass08/lifetap2":[109,406,""],"skills/playerclass08/lifetap3":[109,566,""],"skills/playerclass08/soultransfer":[459,726,""],"skills/playerclass08/ravenousearth1":[179,486,""],"skills/playerclass08/ravenousearth2":[179,646,""],"skills/playerclass08/ravenousearth3":[179,806,""],"skills/playerclass08/reaper1":[109,886,""],"skills/playerclass08/reapspirit1":[249,886,""],"skills/playerclass08/soulscythe1":[249,326,""],"skills/playerclass08/soulscythe2":[249,566,""],"skills/playerclass08/soulscythe3":[249,726,""],"skills/playerclass08/spectralarmor1":[459,326,""],"skills/playerclass08/spectralarmor2":[459,486,""],"skills/playerclass08/summon_blightbeast1":[389,486,""],"skills/playerclass08/summon_blightbeast2_petmodifier":[389,646,""],"skills/playerclass08/summon_blightbeast3_petmodifier":[389,806,""],"skills/playerclass08/summon_skeleton1":[319,246,""],"skills/playerclass08/summon_skeleton2":[319,406,""],"skills/playerclass08/summon_skeleton3_petmodifier":[319,566,""],"skills/playerclass08/weaponpool01":[39,246,""],"skills/playerclass08/weaponpool02":[39,486,""],"skills/playerclass08/lifetap1b":[141,326,""],"skills/playerclass08/soulscythe1b":[211,406,""],"skills/playerclass08/summon_blightbeast1b":[421,566,""],"skills/playerclass08/callofthegrave":[459,646,""],"skills/playerclass08/soulsiphon1b":[71,726,""],"skills/playerclass09/aegis1":[179,246,""],"skills/playerclass09/aegis2":[179,326,""],"skills/playerclass09/aegis3":[179,566,""],"skills/playerclass09/ascension1":[459,486,""],"skills/playerclass09/ascension2":[459,726,""],"skills/playerclass09/divinemandate1":[249,886,""],"skills/playerclass09/judgment1":[249,486,""],"skills/playerclass09/judgment2":[249,646,""],"skills/playerclass09/judgment3":[249,806,""],"skills/playerclass09/passive01":[39,246,""],"skills/playerclass09/passive02":[459,406,""],"skills/playerclass09/pathofthethree1":[389,886,""],"skills/playerclass09/presenceofvirtue1":[389,326,""],"skills/playerclass09/presenceofvirtue2":[389,486,""],"skills/playerclass09/presenceofvirtue3":[389,646,""],"skills/playerclass09/righteousfervor1":[319,246,""],"skills/playerclass09/righteousfervor2":[319,486,""],"skills/playerclass09/righteousfervor3":[319,726,""],"skills/playerclass09/summon_celestialguardian1":[179,726,""],"skills/playerclass09/summon_celestialguardian2_petmodifier":[179,886,""],"skills/playerclass09/viremight1":[109,406,""],"skills/playerclass09/viremight2":[109,566,""],"skills/playerclass09/viremight3":[109,726,""],"skills/playerclass09/wpattack01":[39,326,""],"skills/playerclass09/wpattack02":[39,566,""],"skills/playerclass09/eyeofreckoning1":[39,646,""],"skills/playerclass09/eyeofreckoning2":[39,806,""],"skills/playerclass09/aegis1b":[211,406,""],"skills/playerclass09/righteousfervor1b":[281,326,""],"skills/playerclass09/summon_celestialguardian1b":[141,806,""],"skills/playerclass09/viremight1b":[71,486,""],"skills/playerclass10/amatokpact1":[249,326,""],"skills/playerclass10/amatokpact2":[249,566,""],"skills/playerclass10/amatokpact3":[249,806,""],"skills/playerclass10/bloodborne1":[109,886,""],"skills/playerclass10/heartofastekarn1":[249,886,""],"skills/playerclass10/leap1":[39,646,""],"skills/playerclass10/leap2":[39,806,""],"skills/playerclass10/onslaught1":[179,246,""],"skills/playerclass10/onslaught2":[179,486,""],"skills/playerclass10/onslaught3":[179,726,""],"skills/playerclass10/rallyingcry1":[109,406,""],"skills/playerclass10/rallyingcry2":[109,566,""],"skills/playerclass10/bonechillingcry1":[109,726,""],"skills/playerclass10/wereraven1":[389,406,""],"skills/playerclass10/wereraven2":[389,566,"skills/playerclass10/wereraven1"],"skills/playerclass10/wereraven3":[389,726,"skills/playerclass10/wereraven1"],"skills/playerclass10/werewolf1":[319,246,""],"skills/playerclass10/werewolf2":[319,406,"skills/playerclass10/werewolf1"],"skills/playerclass10/werewolf3":[319,646,"skills/playerclass10/werewolf1"],"skills/playerclass10/windsofasterkarn1":[459,646,""],"skills/playerclass10/windsofasterkarn2":[459,806,""],"skills/playerclass10/wpattack01":[39,326,""],"skills/playerclass10/wpattack02":[39,566,""],"skills/playerclass10/passive01":[39,246,""],"skills/playerclass10/passive02":[459,326,""],"skills/playerclass10/passive03":[459,486,""],"skills/playerclass10/passive04":[389,886,"skills/playerclass10/wereraven1"],"skills/playerclass10/onslaught1b":[141,326,""],"skills/playerclass10/rallyingcry1b":[71,486,""],"skills/playerclass10/werewolf1b":[351,326,""],"skills/playerclass10/wereraven1b":[351,486,""]};
 </script>
 <script>
 /* Character sheet definition -- see gdc_reader/sheet.py. Labels are the
@@ -852,6 +959,14 @@ window.GD_FILTER_EOL="\r\n";
 window.GD_GRADE_COLOUR={"F":"W","C":"Y","B":"G","A":"B","S":"I"};
 window.GD_PALETTE={"A":["Aqua","#80FFD5"],"B":["Blue","#39ABCF"],"C":["Cyan","#00FFFF"],"D":["Dark Gray","#191919"],"E":["Brown","#49392A"],"F":["Fuchsia","#FF69B5"],"G":["Green","#10EB5D"],"H":["Grayish Orange","#C7BAA9"],"I":["Indigo","#5A039A"],"K":["Khaki","#F1E78C"],"L":["Olive","#92CC00"],"M":["Maroon","#800000"],"O":["Orange","#F3A44D"],"P":["Purple","#BD94C6"],"Q":["Grayish Magenta","#B5A8B9"],"R":["Red","#FF4200"],"S":["Silver","#9A9A9A"],"T":["Teal","#00FFD2"],"W":["White","#FFFFFF"],"X":["Dark Green","#38592E"],"Y":["Yellow","#FFF62C"],"Z":["Cobalt","#6A91E0"]};
 window.GD_UNGRADED_COLOUR="S";
+</script>
+<script>
+/* Farmable gear, gzip+base64. Decoded lazily by gear.js; see
+   gear_block() in build.py for the encoding. */
+window.GD_GEAR_GZ="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";
+/* playerclassNN -> mastery name, so gear.js can put an invested
+   skill in a mastery without shipping a second skill index. */
+window.GD_MASTERY_OF={"playerclass01":"Soldier","playerclass02":"Demolitionist","playerclass03":"Occultist","playerclass04":"Nightblade","playerclass05":"Arcanist","playerclass06":"Shaman","playerclass07":"Inquisitor","playerclass08":"Necromancer","playerclass09":"Oathkeeper","playerclass10":"Berserker"};
 </script>
 <script>
 /* Grim Dawn player.gdc parser.
@@ -3285,6 +3400,378 @@ root.GDStats = { load: load, statsOf: statsOf, rawIndex: function () { return IN
 
 </script>
 <script>
+/* Farmable gear, filtered to what this character's own skills would use.
+
+   The corpus is every Monster Infrequent in the game, precomputed by gear_block()
+   with the SKILL RECORD PATHS its bonuses name. This decides which of them are
+   worth a look, which is the only part that depends on the character.
+
+   ⚠️ THE VERDICTS COME FROM filterState.skills, NOT FROM THE SAVE DIRECTLY. That
+   is the same map the Graded Affixes tab scores against, and it carries the
+   reader's own overrides: cycling Blood of Dreeg down to `ignore` on the sheet
+   must drop the gear that only helps Blood of Dreeg, or the two tabs would
+   disagree about what this character wants while sitting next to each other.
+   `ignore` is stored as ABSENCE there, so an unwanted skill is simply not a key. */
+window.GDGear = (function () {
+  'use strict';
+
+  var DATA = null, LOADING = null;
+
+  /* Verdict -> weight. THE SAME ORDER ui.js CYCLES THROUGH, read off VCYCLE
+     rather than written again, so a fifth verdict cannot exist here and not
+     there. `avoid` is absent on purpose: a skill nobody wants is not made
+     interesting by an item that raises it. */
+  function vrank(v) {
+    var i = window.GDVCYCLE ? window.GDVCYCLE.indexOf(v) : -1;
+    return i > 0 ? i : 0;
+  }
+
+  /* Decoded the same way the stat index and the affix corpus are, down to the
+     missing-DecompressionStream branch: an old browser loses this tab and keeps
+     the rest of the reader, rather than throwing on load. */
+  function load() {
+    if (DATA) return Promise.resolve(DATA);
+    if (LOADING) return LOADING;
+    LOADING = (async function () {
+      if (!window.GD_GEAR_GZ) return null;
+      if (typeof DecompressionStream !== 'function') return null;
+      DATA = JSON.parse(await gunzip(window.GD_GEAR_GZ));
+      return DATA;
+    })();
+    return LOADING;
+  }
+
+  async function gunzip(b64) {
+    var bin = atob(b64);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+    return await new Response(stream).text();
+  }
+
+  /* The mastery an invested skill belongs to, from its own folder. Returns ''
+     for a skill in none -- Evade is everyone's -- which then matches no item's
+     mastery route rather than defaulting into one. */
+  function masteryOf(path) {
+    var m = /^records\/skills\/(playerclass\d\d)\//.exec(path || '');
+    return (m && (window.GD_MASTERY_OF || {})[m[1]]) || '';
+  }
+
+  /* Every item this character's skills reach, best first.
+
+     THREE ROUTES REACH A SKILL AND THEY ARE NOT THE SAME OFFER:
+       skill   "+3 to Blood of Dreeg"        -- names the skill itself
+       mastery "+1 to all Occultist skills"  -- every skill she has in it
+       all     "+1 to All Skills"            -- likewise, in every mastery
+     The broad two are included on request, and only where the character HAS the
+     mastery: "+1 to all Necromancer" is worth nothing to an Occultist, and an
+     item offering only that is not farmable gear for her. `how` records which
+     route matched so the card can say so -- a reader who cannot tell "+3 to the
+     skill I use" from "+1 to everything" is reading a list of 400 items again. */
+  function match(wanted) {
+    var d = DATA;
+    if (!d) return null;
+    var invested = Object.keys(wanted || {});
+    if (!invested.length) return [];
+
+    var byMastery = {}, mine = {};
+    invested.forEach(function (p) {
+      var m = masteryOf(p);
+      if (!m) return;
+      (byMastery[m] = byMastery[m] || []).push(p);
+      mine[m] = 1;
+    });
+
+    var out = [];
+    d.it.forEach(function (row) {
+      var hits = {};
+      function add(path, how, label, mastery) {
+        var v = wanted[path];
+        if (!v) return;
+        /* A named skill beats a blanket bonus for the SAME skill: both are true,
+           and the specific one is what the reader is choosing this item for. */
+        if (!hits[path] || hits[path].rank < RANK[how]) {
+          hits[path] = { path: path, verdict: v, how: how, rank: RANK[how],
+                         mastery: mastery || '',
+                         /* The name the card's own lines carry, which is not
+                            always the skill's: a Wereraven sub-skill's lines all
+                            read "Wereraven:". Shipped rather than looked up, so
+                            the chip and the lines below it cannot disagree. */
+                         label: label || '' };
+        }
+      }
+      row[4].forEach(function (i) { add(d.sk[i][0], 'skill', d.sk[i][1]); });
+      /* ⚠️ THE BROAD ROUTES STILL SCORE PER SKILL AND NO LONGER RENDER PER
+         SKILL. "+1 to all Shaman" really does raise all thirteen, so it still
+         counts thirteen towards how much of this character the item feeds -- but
+         printing thirteen chips for one line of text was the item shouting over
+         everything that names a skill. `badges` is what the card shows. */
+      var badges = [];
+      row[5].forEach(function (i) {
+        var m = d.ms[i];
+        if (!mine[m]) return;
+        (byMastery[m] || []).forEach(function (p) { add(p, 'mastery', '', m); });
+        badges.push({ label: m, how: 'mastery' });
+      });
+      if (row[6]) {
+        Object.keys(mine).forEach(function (m) {
+          (byMastery[m] || []).forEach(function (p) { add(p, 'all', '', m); });
+        });
+        if (Object.keys(mine).length) badges.push({ label: 'All Skills', how: 'all' });
+      }
+      var list = Object.keys(hits).map(function (k) { return hits[k]; });
+      if (!list.length) return;
+      var score = 0, best = 0, route = 0;
+      list.forEach(function (h) {
+        var r = vrank(h.verdict);
+        score += r;
+        if (r > best) best = r;
+        if (h.rank > route) route = h.rank;
+      });
+      if (!best) return;   /* everything it reaches is ignored or avoided */
+      list.sort(function (a, b) {
+        return vrank(b.verdict) - vrank(a.verdict) || b.rank - a.rank;
+      });
+      /* What the card prints: one chip per NAMED skill, and one per broad route
+         naming the mastery it reaches rather than everything inside it. Each
+         carries the best verdict it stands for, so the colour still says how
+         much this character wants what the chip offers. */
+      var shown = list.filter(function (h) { return h.how === 'skill'; })
+                      .map(function (h) {
+                        return { label: h.label, path: h.path, verdict: h.verdict,
+                                 how: 'skill' };
+                      });
+      badges.forEach(function (b) {
+        var v = 'nice', r = 0;
+        list.forEach(function (h) {
+          if (h.how !== b.how) return;
+          if (b.how === 'mastery' && h.mastery !== b.label) return;
+          if (vrank(h.verdict) > r) { r = vrank(h.verdict); v = h.verdict; }
+        });
+        if (r) shown.push({ label: b.label, verdict: v, how: b.how, path: '' });
+      });
+      out.push({
+        name: row[0], level: row[1], slot: row[2], location: row[3],
+        effects: row[7], bucket: d.bk[row[8]],
+        hits: shown, score: score, best: best, route: route,
+        verdict: (window.GDVCYCLE || [])[best] || 'nice'
+      });
+    });
+
+    /* Ranked the way the sheet grades a stat -- strongest verdict first -- and
+       then by ROUTE before volume.
+
+       ⚠️ ROUTE BEFORE SCORE, OR THE BLANKET BONUSES TAKE THE WHOLE TOP. A "+1 to
+       all skills" helmet touches every one of a character's thirteen skills and
+       scores thirteen; "+4 to Savagery" on a Savagery build touches one and
+       scores three. Sorting on volume alone put five items that name nothing she
+       plays above every item that names what she plays, which is the opposite of
+       what this tab is for. Both are real offers and both are listed -- that was
+       the request -- but naming the skill is the stronger claim, so it sorts
+       first and the chip says which it is.
+
+       Name last so the order is stable between repaints. */
+    out.sort(function (a, b) {
+      return b.best - a.best || b.route - a.route || b.score - a.score
+          || a.name.localeCompare(b.name);
+    });
+    return out;
+  }
+
+  var RANK = { skill: 3, mastery: 2, all: 1 };
+
+  return { load: load, match: match, masteryOf: masteryOf, RANK: RANK,
+           buckets: function () { return DATA ? DATA.bk : []; },
+           index: function () { return DATA; } };
+})();
+
+</script>
+<script>
+/* The text filter, once.
+ *
+ * Three pages run this: the GD Catalogue's four tabs, the Transfer Stash, and
+ * GD Lens's affix tab. It existed as three hand-kept copies until 2026-09-09,
+ * and the cost was measurable -- the typed-word-order rule reached two of the
+ * three and sat unnoticed on the third for three days, because that page's gate
+ * drove only single-word probes and order cannot differ with one word.
+ *
+ * WHAT THIS OWNS: the matching rules, and nothing else. It is handed a list of
+ * strings and a query, and answers whether they match and which spans to mark.
+ *
+ * WHAT IT DOES NOT OWN, on purpose: which strings go in the list. That is the
+ * one genuinely per-surface decision -- the catalogue searches computed effect
+ * lines, factions and set bonuses, the stash searches the tooltip lines the game
+ * itself wrote, GD Lens searches affix rows -- and each page keeps a function
+ * producing them. Same boundary that worked for the trigger vocabulary: the
+ * library owns the rule, the page owns what it feeds in.
+ *
+ * The rules, each of which shipped as a bug first:
+ *
+ *  - PER LINE, never one merged blob. "aether resist" must not match a card
+ *    carrying "Aether Damage" on one line and "Cold Resist" on another.
+ *  - Words in the ORDER TYPED, not necessarily adjacent. "converted to physical"
+ *    is a different query from "physical converted to"; adjacency is NOT
+ *    required, because the same stat is phrased with different filler between
+ *    the words and requiring it would defeat the synonym expansion.
+ *  - damage <-> dmg, expanded per word, and a PREFIX of either half counts as
+ *    the whole word already. Without that, typing "damage" letter by letter
+ *    shows nothing until the final keystroke and then jumps.
+ *  - Apostrophe-insensitive both ways: "deaths" finds "Death's" and vice versa.
+ *  - `flat` and `%` are opposed modifiers over the same stat. Any prefix of
+ *    "flat" counts, for the same anti-flicker reason.
+ *  - AND/OR/NOT rows combine left to right with no precedence. An empty list has
+ *    no opinion, so an untouched box never narrows anything.
+ *  - Highlight scope follows search scope and does NOT inherit it: a row marks a
+ *    line only when that line is the one satisfying the row's whole word set.
+ *    Fixing one side alone is a bug all three pages have shipped.
+ */
+/* GDSearch:begin -- tools/check_page_search.js cuts between these two markers
+   to run the conformance cases against the copy a page shipped. It asserts both
+   are present, so renaming one fails loudly instead of checking nothing. */
+(function (root) {
+  'use strict';
+
+  var APOSTROPHE_RE = /['’]/g;
+  function stripApostrophes(s) { return String(s).replace(APOSTROPHE_RE, ''); }
+
+  var SYNONYMS = [['damage', 'dmg']];
+
+  function expandTermVariants(text) {
+    var variants = {};
+    variants[text] = 1;
+    SYNONYMS.forEach(function (pair) {
+      var a = pair[0], b = pair[1], next = {};
+      Object.keys(variants).forEach(function (v) {
+        next[v] = 1;
+        if (v.indexOf(a) >= 0) next[v.split(a).join(b)] = 1;
+        if (v.indexOf(b) >= 0) next[v.split(b).join(a)] = 1;
+        // Still mid-word ("dam" on the way to "damage"): treat it as if the full
+        // word were already typed, so the result set does not jump on the last key.
+        if (a.indexOf(v) === 0) next[b] = 1;
+        if (b.indexOf(v) === 0) next[a] = 1;
+      });
+      variants = next;
+    });
+    return Object.keys(variants);
+  }
+
+  function parseSearchWords(text) {
+    var raw = stripApostrophes(String(text).toLowerCase()).split(/\s+/).filter(Boolean);
+    var isFlat = function (w) { return w.length > 0 && 'flat'.indexOf(w) === 0; };
+    return {
+      requireFlat: raw.some(isFlat),
+      words: raw.filter(function (w) { return !isFlat(w); }),
+    };
+  }
+
+  /* Greedy: the EARLIEST occurrence of any of a word's variants at or after the
+     previous word's end. Optimal for a subsequence test, since accepting a later
+     occurrence can only lose matches; where two variants start at the same index
+     the shorter wins, leaving the most room for the words still to place. */
+  function wordsInOrder(line, variantsList) {
+    var pos = 0;
+    for (var i = 0; i < variantsList.length; i++) {
+      var at = -1, len = 0, vs = variantsList[i];
+      for (var j = 0; j < vs.length; j++) {
+        var k = line.indexOf(vs[j], pos);
+        if (k < 0) continue;
+        if (at < 0 || k < at || (k === at && vs[j].length < len)) { at = k; len = vs[j].length; }
+      }
+      if (at < 0) return false;
+      pos = at + len;
+    }
+    return true;
+  }
+
+  /* A query, parsed once. Callers memoize this per row: a keystroke repaints
+     every row and the parse cannot have changed between them. */
+  function parseQuery(text) {
+    var p = parseSearchWords(text);
+    return { requireFlat: p.requireFlat, variants: p.words.map(expandTermVariants) };
+  }
+
+  /* Does this ONE line satisfy this parsed query? The predicate both matching
+     and highlighting call, so the same-line rule cannot be corrected on one side
+     only. `line` must already be lowercased and apostrophe-stripped. */
+  function lineMatches(line, q) {
+    if (q.requireFlat && line.indexOf('%') >= 0) return false;
+    return wordsInOrder(line, q.variants);
+  }
+
+  function normalise(s) { return stripApostrophes(String(s).toLowerCase()); }
+
+  /* Any of these lines. `lines` may be raw: normalise() is applied here unless
+     the caller says it has already done it, which every page does, since the
+     normalised lines are memoized per record. */
+  function termMatches(lines, text, alreadyNormalised) {
+    var q = parseQuery(text);
+    return lines.some(function (l) {
+      return lineMatches(alreadyNormalised ? l : normalise(l), q);
+    });
+  }
+
+  /* AND/OR/NOT rows, left to right, no precedence. Each row's operator applies
+     to the running result so far against that row's own match. */
+  function rowsMatch(lines, rows, alreadyNormalised) {
+    var live = rows.filter(function (r) { return String(r.text).trim() !== ''; });
+    if (!live.length) return true;
+    var result = null;
+    live.forEach(function (row, i) {
+      var m = termMatches(lines, String(row.text).trim(), alreadyNormalised);
+      if (i === 0) { result = m; return; }
+      if (row.op === 'OR') result = result || m;
+      else if (row.op === 'NOT') result = result && !m;
+      else result = result && m;
+    });
+    return result;
+  }
+
+  /* The spans to mark in ONE line, as [start, end) pairs over the line's PLAIN
+     text. A NOT row marks nothing: the card is here in spite of it, not because.
+     A row contributes its words only when this line satisfies that row's whole
+     word set -- the same test termMatches just made. */
+  function markRanges(line, rows) {
+    var lower = normalise(line), out = [];
+    rows.forEach(function (r) {
+      var t = String(r.text || '').trim();
+      if (!t || r.op === 'NOT') return;
+      var q = parseQuery(t);
+      if (!lineMatches(lower, q)) return;
+      q.variants.forEach(function (vs) {
+        vs.forEach(function (v) {
+          if (!v) return;
+          var from = 0, i;
+          while ((i = lower.indexOf(v, from)) >= 0) { out.push([i, i + v.length]); from = i + 1; }
+        });
+      });
+    });
+    if (!out.length) return out;
+    // Merge overlaps so a span is not marked twice, which nests <mark> elements.
+    out.sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
+    var merged = [out[0]];
+    for (var i = 1; i < out.length; i++) {
+      var last = merged[merged.length - 1];
+      if (out[i][0] <= last[1]) last[1] = Math.max(last[1], out[i][1]);
+      else merged.push(out[i]);
+    }
+    return merged;
+  }
+
+  root.GDSearch = {
+    stripApostrophes: stripApostrophes,
+    normalise: normalise,
+    expandTermVariants: expandTermVariants,
+    parseSearchWords: parseSearchWords,
+    parseQuery: parseQuery,
+    wordsInOrder: wordsInOrder,
+    lineMatches: lineMatches,
+    termMatches: termMatches,
+    rowsMatch: rowsMatch,
+    markRanges: markRanges,
+  };
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+/* GDSearch:end */
+
 /* ---- UI: render a parsed save ------------------------------------------- */
 (function () {
 'use strict';
@@ -3380,6 +3867,9 @@ var filterState = { verdicts: {}, skills: {}, ready: false };
    character's own numbers can say a stat is unwanted, turned out to be too strong.
    See the dtype branch in stat_engine.verdict_explain(). */
 var VCYCLE = ['avoid', 'ignore', 'nice', 'priority'];
+/* Exported because gear.js weighs a verdict by its position here. A second
+   copy of the order would let one tab rank `nice` above `priority`. */
+window.GDVCYCLE = VCYCLE;
 var VGLYPH = { avoid: '✕', ignore: '−', nice: '●', priority: '★' };
 var overrides = {}, overrideKey = null, overrideChar = null;
 var lastColumns = 0;
@@ -3499,6 +3989,7 @@ function paintReset() {
   if (!btn && hd) {
     btn = document.createElement('button');
     btn.className = 'linkbtn'; btn.id = 'vreset'; btn.type = 'button';
+    btn.hidden = currentTab() !== 'tab-sheet';
     btn.addEventListener('click', function () {
       if (!Object.keys(overrides).length) return;
       overrides = {}; saveOverrides(); repaintAll();
@@ -3586,6 +4077,7 @@ function paintFilterBtn() {
   if (!btn) {
     btn = document.createElement('button');
     btn.className = 'linkbtn'; btn.id = 'vfilter'; btn.type = 'button';
+    btn.hidden = currentTab() !== 'tab-affix';
     btn.addEventListener('click', function () {
       if (!filterState.ready) return;
       btn.textContent = 'Grading\u2026';
@@ -3642,7 +4134,10 @@ function paintLegend() {
     item.appendChild(text('span', 'lgt', VLABEL[v] || v));
     host.appendChild(item);
   });
-  host.appendChild(text('span', 'lgh', 'click an icon to change it \u00b7 right click to go back'));
+  /* Beside the icons it describes, not pushed to the far right: the hint is
+     about the three marks to its left, and an auto margin put it a column
+     away from the thing it explains. */
+  host.appendChild(text('span', 'lgh', 'Left or right click on the icons to cycle through priority'));
 }
 
 /* ---- the affix tab ------------------------------------------------------
@@ -3666,7 +4161,19 @@ var lastTermInput = null;
 function invalidateAffixes() {
   affixPainted = false;
   affixData = null;
+  /* ⚠️ GEAR IS DROPPED WHETHER OR NOT ITS TAB IS OPEN, and that is the whole
+     fix. The icons that change a skill's verdict are on the SHEET tab, so the
+     ordinary gesture -- grade some skills, then go and look at the gear -- never
+     has the gear tab open at the moment the verdict changes. Repainting only the
+     visible tab left the list scored for a character the reader had already
+     changed: thirteen skills cycled to `avoid` and all 57 rows still sitting
+     there. Clearing it is what makes the next paintGear() rescore.
+
+     The reader's own filters are NOT cleared with it: the search text and the
+     pressed slot chips are about the list, not about the character. */
+  gearAll = null;
   if (el('tab-affix') && el('tab-affix').getAttribute('aria-selected') === 'true') paintAffixes();
+  if (el('tab-gear') && el('tab-gear').getAttribute('aria-selected') === 'true') paintGear(true);
 }
 
 function paintAffixes() {
@@ -3691,39 +4198,15 @@ function paintAffixes() {
    bands are the axis and every row already prints its slots). What is kept is
    the matching, and the reason to keep it verbatim is that each rule below is
    a bug that shipped there first. */
-var APOS_RE = /['’]/g;
-function stripApos(s) { return s.replace(APOS_RE, ''); }
-
-var SEARCH_SYNONYMS = [['damage', 'dmg']];
-function expandTermVariants(w) {
-  var variants = [w];
-  SEARCH_SYNONYMS.forEach(function (pair) {
-    var a = pair[0], b = pair[1], next = [];
-    variants.forEach(function (v) {
-      next.push(v);
-      if (v.indexOf(a) >= 0) next.push(v.split(a).join(b));
-      if (v.indexOf(b) >= 0) next.push(v.split(b).join(a));
-      /* Still mid-word ("dam" on the way to "damage"): treat it as the whole
-         word already, or the result count dips and jumps as the last letters
-         land instead of only ever narrowing. */
-      if (a.indexOf(v) === 0) next.push(b);
-      if (b.indexOf(v) === 0) next.push(a);
-    });
-    variants = next;
-  });
-  var seen = {}, out = [];
-  variants.forEach(function (v) { if (!seen[v]) { seen[v] = 1; out.push(v); } });
-  return out;
-}
+/* The rules themselves are gd-lib's search.js, spliced in above by build.py.
+   What stays here is the ONE per-surface decision -- which lines an affix row
+   puts in front of the matcher -- plus the memos, which are about this page's
+   repaint rate and not about the rules. */
+var stripApos = GDSearch.stripApostrophes;
 
 /* `flat` is a MODIFIER, not a word to find: it means "a line for the remaining
    words that is not a percentage". Typing "%" already isolates the other half.
    Any prefix of it counts as the whole word, for the same anti-flicker reason. */
-function parseSearchWords(t) {
-  var raw = stripApos(t.toLowerCase()).split(/\s+/).filter(Boolean);
-  var isFlat = function (w) { return w.length > 0 && 'flat'.indexOf(w) === 0; };
-  return { requireFlat: raw.some(isFlat), words: raw.filter(function (w) { return !isFlat(w); }) };
-}
 
 /* The line a row PRINTS, composed once and used by both the search and the
    painter -- a second composer is how a searchable field stops being the field
@@ -3760,8 +4243,7 @@ function parsedTerm(t) {
   var p = _parsed[t];
   if (!p) {
     if (Object.keys(_parsed).length > 400) _parsed = {};
-    var w = parseSearchWords(t);
-    p = _parsed[t] = { requireFlat: w.requireFlat, variants: w.words.map(expandTermVariants) };
+    p = _parsed[t] = GDSearch.parseQuery(t);
   }
   return p;
 }
@@ -3771,13 +4253,16 @@ function normLines(a) {
 }
 
 function termMatches(a, t) {
-  var p = parsedTerm(t);
-  return normLines(a).some(function (lower) {
-    if (p.requireFlat && lower.indexOf('%') >= 0) return false;
-    return p.variants.every(function (vs) {
-      return vs.some(function (v) { return lower.indexOf(v) >= 0; });
-    });
-  });
+  return linesMatchTerm(normLines(a), t);
+}
+
+/* ⚠️ THE ONE PREDICATE, for both tabs. Each surface decides which strings go in
+   -- that is the genuinely per-surface question -- and neither decides what
+   matching means. Restating this for the gear tab is precisely the drift that
+   made the three copies of the engine into one. */
+function linesMatchTerm(lowerLines, t) {
+  var q = parsedTerm(t);
+  return lowerLines.some(function (lower) { return GDSearch.lineMatches(lower, q); });
 }
 
 /* Rows combine left to right with no precedence: each row's operator applies to
@@ -3804,17 +4289,18 @@ function affixMatches(a) {
    contributes its words only when THIS line is the one satisfying that row's
    whole word set, which is the same same-line test termMatches just made. A
    NOT row marks nothing: it is why the card is here in spite of, not because. */
-function markTerms(line) {
+function markTerms(line, rows) {
   var lower = stripApos(line.toLowerCase()), out = [];
-  affixRows.forEach(function (r) {
+  (rows || affixRows).forEach(function (r) {
     var t = r.text.trim();
     if (!t || r.op === 'NOT') return;
-    var p = parsedTerm(t);
-    if (p.requireFlat && lower.indexOf('%') >= 0) return;
-    var satisfied = p.variants.every(function (vs) {
-      return vs.some(function (v) { return lower.indexOf(v) >= 0; });
-    });
-    if (satisfied) p.variants.forEach(function (vs) { vs.forEach(function (v) { out.push(v); }); });
+    var q = parsedTerm(t);
+    // The SAME predicate termMatches just used -- shared, not restated, which is
+    // what stops one being corrected without the other. The spans themselves are
+    // this page's own: it marks by apostrophe-tolerant regex over the real text,
+    // where the stash takes index ranges and the catalogue emits markup.
+    if (!GDSearch.lineMatches(lower, q)) return;
+    q.variants.forEach(function (vs) { vs.forEach(function (v) { out.push(v); }); });
   });
   return out;
 }
@@ -3832,9 +4318,9 @@ function apostropheTolerant(w) {
    `line` is the whole candidate line the string belongs to, because the
    satisfaction test above is per line and a value and its label are two spans of
    one line. */
-function hlSpan(tag, cls, str, line) {
+function hlSpan(tag, cls, str, line, rows) {
   var n = text(tag, cls);
-  var terms = markTerms(line === undefined ? str : line);
+  var terms = markTerms(line === undefined ? str : line, rows);
   if (!terms.length) { n.textContent = str; return n; }
   var re = new RegExp('(' + terms.map(apostropheTolerant).join('|') + ')', 'gi');
   var i = 0, m;
@@ -4033,21 +4519,279 @@ function affixRow(a) {
   return d;
 }
 
+/* ---- the Farmable Gear tab ----------------------------------------------
+   Which Monster Infrequent to go and farm, given what this character actually
+   spent points on. The matching is gear.js; this is the rendering and the one
+   decision that belongs to the page -- what a reader needs to see to act on a
+   row, which is the item, where it drops, and WHY it is in the list. */
+/* One term, in the shape liveRows()/markTerms() already expect, so the gear tab
+   and the affix tab hand the matcher the same thing. */
+var gearRows = [{ text: '' }];
+var gearSlots = {};       /* bucket -> 1 while its chip is pressed */
+var gearAll = null;       /* the last full match, kept so a keystroke does not rescore */
+
+/* ⚠️ ONE CANDIDATE LINE PER LINE, never one merged blob -- the affix tab's rule
+   and the catalogue's before it. All of a term's words must land on the SAME
+   line, or "savagery boss" is satisfied by a Savagery bonus on one line and a
+   boss on another, and neither is the answer.
+
+   EVERY LINE HERE IS ONE THE ROW RENDERS, and every one of them is highlighted.
+   The fields that are not searched -- the level, the verdict glyph -- are not
+   marked either. Both or neither; that promise is the reason to keep the two
+   lists in one function. */
+function gearLines(r) {
+  var out = [r.name, r.slot];
+  r.hits.forEach(function (h) {
+    out.push(gearSkillName(h.path) || h.label || '');
+  });
+  if (r.location) out.push(r.location);
+  r.effects.forEach(function (e) { out.push(e); });
+  return out;
+}
+
+function gearNormLines(r) {
+  if (!r._nl) {
+    r._nl = gearLines(r).map(function (l) { return stripApos(String(l).toLowerCase()); });
+  }
+  return r._nl;
+}
+
+function gearTextMatches(r) {
+  var t = gearRows[0].text.trim();
+  return !t || linesMatchTerm(gearNormLines(r), t);
+}
+
+/* Additive, like the stash's chips: none pressed is NO OPINION, not an empty
+   set. The catalogue needs a ['None'] sentinel because its facet engine runs
+   .some() over an item's values and an empty array deletes the item from every
+   view; nothing here can vanish that way. */
+function gearSlotMatches(r) {
+  var on = Object.keys(gearSlots);
+  return !on.length || gearSlots[r.bucket] === 1;
+}
+
+function gearSkillName(path) {
+  return SKILLS[path.replace(/^records\//, '').replace(/\.dbr$/, '')] || null;
+}
+
+/* "+3 to Blood of Dreeg" and "+1 to all Occultist" are both true of an item and
+   are not the same offer. The route is printed, not inferred from the effect
+   lines: a line saying "+1 to all Occultist skills" would otherwise have to be
+   matched back to the skill by NAME, which is exactly the join this tab avoids. */
+/* The footnote on a chip, or ''. The route used to be spelled out here too
+   ("via mastery"), and it no longer is: the chip for a broad bonus now says the
+   MASTERY -- "Shaman" -- which is what the item's line actually reads, so the
+   words were restating the label beside them.
+
+   What remains is the case a reader cannot work out: a sub-skill whose lines are
+   titled by its parent. Without it, someone with points in Wereraven's Icicles
+   reads "Icicles" on the chip and finds nothing called that underneath. */
+function gearHow(h, nm) {
+  return h.how === 'skill' && h.label && h.label !== nm
+    ? 'shown as ' + h.label : '';
+}
+
+function paintGear(force) {
+  var host = el('gearlist'), note = el('gearnote');
+  if (!host || !window.GDGear || !filterState.ready) return;
+  /* HAVING A SCORED LIST is the condition, not a "have I painted before" flag.
+     The flag could be true while the list it described had been thrown away by
+     invalidateAffixes(), which is exactly how a stale list got re-rendered
+     instead of rescored. */
+  if (gearAll && !force) { renderGear(); return; }
+  if (!gearAll) note.textContent = 'Matching…';
+  window.GDGear.load().then(function (idx) {
+    if (!idx) { note.textContent = 'Not supported in this browser.'; return; }
+    /* Scored ONCE per verdict change, not per keystroke: the scoring reads the
+       character and the filters read the result, so typing must not rescore 401
+       items on every letter. */
+    gearAll = window.GDGear.match(filterState.skills);
+    /* ⚠️ A RESCORE CAN REMOVE A SLOT ENTIRELY. Cycling the last Shaman skill to
+       `ignore` drops every two-hand melee row, and a chip left pressed for a
+       bucket that no longer exists is then filtering against nothing -- an empty
+       list with no visible cause, because renderGearSlots() only draws chips
+       that have rows. Dropped here so the pressed set can only ever name a slot
+       the reader can see. */
+    var live = {};
+    gearAll.forEach(function (r) { live[r.bucket] = 1; });
+    Object.keys(gearSlots).forEach(function (b) {
+      if (!live[b]) delete gearSlots[b];
+    });
+    wireGearSearch();
+    /* Again after every rescore, not only on the first paint: the counts on the
+       chips are this character's and they move with the verdicts. */
+    renderGearSlots();
+    renderGear();
+  }).catch(function (e) { note.textContent = 'Failed: ' + e.message; });
+}
+
+function wireGearSearch() {
+  var box = el('gsearch'), clear = el('gclear'), host = el('gslots');
+  if (!box || box._wired) return;
+  box._wired = true;
+  box.addEventListener('input', function () {
+    gearRows[0].text = box.value;
+    renderGear();
+  });
+  clear.addEventListener('click', function () {
+    /* Clears BOTH, and un-presses the chips with it. A clear that reset the
+       buckets but left the chips looking pressed is a bug the stash shipped
+       once; the chips are re-rendered from gearSlots rather than left alone. */
+    box.value = '';
+    gearRows[0].text = '';
+    gearSlots = {};
+    renderGearSlots();
+    renderGear();
+  });
+  renderGearSlots();
+}
+
+/* Built from the slots the CORPUS HAS, never a written-down list: a chip for a
+   slot no farmable item occupies selects nothing and says nothing about why. */
+function renderGearSlots() {
+  var host = el('gslots');
+  if (!host || !gearAll) return;
+  var counts = {};
+  gearAll.forEach(function (r) { counts[r.bucket] = (counts[r.bucket] || 0) + 1; });
+  host.textContent = '';
+  (window.GDGear.buckets() || []).forEach(function (b) {
+    if (!counts[b]) return;
+    var on = gearSlots[b] === 1;
+    var btn = text('button', 'gslot');
+    btn.type = 'button';
+    btn.setAttribute('aria-pressed', String(on));
+    /* No class: the label takes the button's own colour, and a class with no
+       rule behind it is exactly what the style gate exists to catch. */
+    btn.appendChild(text('span', null, b));
+    /* The count is this CHARACTER's, not the game's -- it is the number of rows
+       the chip would leave, which is the only figure that predicts the click. */
+    btn.appendChild(text('span', 'gn', String(counts[b])));
+    btn.addEventListener('click', function () {
+      if (gearSlots[b]) delete gearSlots[b]; else gearSlots[b] = 1;
+      renderGearSlots();
+      renderGear();
+    });
+    host.appendChild(btn);
+  });
+}
+
+function renderGear() {
+  var host = el('gearlist'), note = el('gearnote');
+  host.textContent = '';
+  if (!gearAll) { note.textContent = 'No gear data.'; return; }
+  if (!gearAll.length) {
+    /* An empty list is a real answer here and says which of the two reasons it
+       is: a character with no points spent, or one whose skills no MI names. */
+    note.textContent = Object.keys(filterState.skills).length
+      ? 'No farmable item names a skill this character wants.'
+      : 'No skill is marked nice or priority, so nothing can match. '
+        + 'Set a verdict on the Skills section of the sheet.';
+    return;
+  }
+  var rows = gearAll.filter(function (r) {
+    return gearSlotMatches(r) && gearTextMatches(r);
+  });
+  /* ⚠️ THE NOTE IS FOR THE EMPTY CASES ONLY. A running tally above the list said
+     nothing the list does not -- the rows are right there to count -- so it is
+     blank whenever there are rows to show. An empty list is the one state that
+     cannot explain itself, and it still says which kind of empty it is: nothing
+     matched this character at all (above), or the filter removed what did. */
+  note.textContent = rows.length
+    ? ''
+    : 'None of the ' + gearAll.length + ' matching items pass this filter.';
+  rows.forEach(function (r) { host.appendChild(gearRow(r)); });
+}
+
+/* Everything searched is marked, using this tab's own single-term row set. The
+   affix tab's hlSpan() with `gearRows` passed in -- the marking mechanism is the
+   page's and there is no reason for two of it. */
+function gmark(tag, cls, str, line) {
+  return hlSpan(tag, cls, str, line === undefined ? str : line, gearRows);
+}
+
+function gearRow(r) {
+  var d = text('div', 'gearitem');
+  var hd = text('div', 'gearhd');
+  /* No verdict glyph on the row. It restated what the chips below already say in
+     colour, and a star against an ITEM read as a verdict on the item rather than
+     on the skills it feeds -- which is not a judgement this tab makes. */
+  hd.appendChild(gmark('span', 'gearname', r.name));
+  hd.appendChild(text('span', 'gearlvl', 'Lvl ' + r.level));
+  hd.appendChild(gmark('span', 'gearslot', r.slot));
+  d.appendChild(hd);
+
+  /* WHY it is here, before what it does. The reader is scanning for their own
+     skill names, and the effect lines are long enough to bury them. */
+  var why = text('div', 'gearwhy');
+  r.hits.forEach(function (h) {
+    var nm = gearSkillName(h.path) || h.label || h.path.split('/').pop();
+    var chip = text('span', 'gearskill ' + vclass(h.verdict));
+    chip.appendChild(gmark('span', 'gs', nm));
+    var note = gearHow(h, nm);
+    if (note) chip.appendChild(text('span', 'gh', note));
+    why.appendChild(chip);
+  });
+  d.appendChild(why);
+
+  if (r.location) {
+    var loc = text('div', 'gearloc');
+    loc.appendChild(text('span', 'gk', 'Drops:'));
+    loc.appendChild(gmark('span', 'gv', r.location));
+    d.appendChild(loc);
+  }
+
+  var fx = text('ul', 'gearfx');
+  r.effects.forEach(function (line) { fx.appendChild(gmark('li', '', line)); });
+  d.appendChild(fx);
+  return d;
+}
+
+/* Which header control belongs to which tab.
+   
+   Both used to sit above every tab. "Reset N icons" undoes verdict overrides,
+   which are set on the sheet, and "Download loot filter" writes a file built
+   from the affix grades -- so on the gear tab they were two controls for two
+   other screens, and the reset in particular reads as though it would reset the
+   gear list. A control is shown where it acts. */
+var TAB_CONTROL = { 'vreset': 'tab-sheet', 'vfilter': 'tab-affix' };
+
+function currentTab() {
+  var ids = ['tab-sheet', 'tab-affix', 'tab-gear'], found = 'tab-sheet';
+  ids.forEach(function (id) {
+    var b = el(id);
+    if (b && b.getAttribute('aria-selected') === 'true') found = id;
+  });
+  return found;
+}
+
+function showTabControls(tabId) {
+  Object.keys(TAB_CONTROL).forEach(function (id) {
+    var b = el(id);
+    /* ⚠️ .hidden, and .linkbtn CARRIES NO display OF ITS OWN, so the UA's
+       [hidden]{display:none} applies. Every element toggled this way needs that
+       checked -- a class with its own display beats [hidden] on equal
+       specificity and the element stays on screen. */
+    if (b) b.hidden = TAB_CONTROL[id] !== tabId;
+  });
+}
+
 function paintTabs() {
   var bar = el('tabs');
   if (!bar || bar._wired) return;
   bar._wired = true;
-  [['tab-sheet', 'view-sheet'], ['tab-affix', 'view-affix']].forEach(function (pair) {
+  [['tab-sheet', 'view-sheet'], ['tab-affix', 'view-affix'], ['tab-gear', 'view-gear']].forEach(function (pair) {
     var b = el(pair[0]);
     if (!b) return;
     b.addEventListener('click', function () {
-      [['tab-sheet', 'view-sheet'], ['tab-affix', 'view-affix']].forEach(function (q) {
+      [['tab-sheet', 'view-sheet'], ['tab-affix', 'view-affix'], ['tab-gear', 'view-gear']].forEach(function (q) {
         var on = q[0] === pair[0];
         el(q[0]).classList.toggle('on', on);
         el(q[0]).setAttribute('aria-selected', String(on));
         el(q[1]).classList.toggle('hidden', !on);
       });
       if (pair[0] === 'tab-affix') paintAffixes();
+      if (pair[0] === 'tab-gear') paintGear();
+      showTabControls(pair[0]);
     });
   });
 }
@@ -4285,7 +5029,9 @@ function render(save, fileName, isDemo) {
         } else {
           col.appendChild(text('div', 'bar', 'Other'));
         }
-        g.rows.forEach(function (x) { col.appendChild(skillRow(x)); });
+        orderSkills(g.rows).forEach(function (x) {
+          col.appendChild(skillRow(x, x._child));
+        });
         list.appendChild(col);
       });
     }
@@ -4305,7 +5051,60 @@ function render(save, fileName, isDemo) {
       } catch (e) { skillDetail = {}; }
     };
 
-    function skillRow(x) {
+    /* The mastery panel's own order, with a skill's modifiers under it.
+    
+       ⚠️ THE GAME DOES NOT ENCODE SKILL CONNECTIONS. The lines joining nodes in
+       the skill window are painted into the panel's background texture, and the
+       button records carry only a position. So this reproduces the WINDOW rather
+       than claiming a dependency graph: sorted by the panel's own row and
+       column, which is what puts Brute Force, Feral Hunger and Upheaval together
+       in that order -- that is where the game draws them.
+    
+       A skill's modifiers and transmuter are a different matter and ARE authored:
+       tagClass06SkillName01A is Savagery and 01B/01C/01D are its three, so they
+       are lifted out of panel order and placed directly under it. Might of the
+       Bear sits a half-row below Savagery and no proximity rule would have
+       attached it. See build_skill_tree(). */
+    function orderSkills(rows) {
+      var TREE = window.GD_SKILL_TREE || {};
+      var pos = function (x) { return TREE[key(x.name)] || [9999, 9999, '']; };
+      var invested = {};
+      rows.forEach(function (x) { invested[key(x.name)] = x; });
+
+      var tops = [], byParent = {};
+      rows.forEach(function (x) {
+        var p = pos(x)[2];
+        /* Only nested under a parent THIS CHARACTER HAS POINTS IN. A modifier
+           whose parent is unspent would otherwise hang under a heading that is
+           not on screen, which reads as the grouping being broken. */
+        if (p && invested[p] && p !== key(x.name)) {
+          (byParent[p] = byParent[p] || []).push(x);
+        } else {
+          tops.push(x);
+        }
+      });
+      var panelOrder = function (a, b) {
+        var pa = pos(a), pb = pos(b);
+        return pa[0] - pb[0] || pa[1] - pb[1]
+            || (skillName(a.name) || '').localeCompare(skillName(b.name) || '');
+      };
+      tops.sort(panelOrder);
+      var out = [];
+      tops.forEach(function (t) {
+        out.push(t);
+        (byParent[key(t.name)] || []).sort(panelOrder).forEach(function (c) {
+          c._child = true;
+          out.push(c);
+        });
+      });
+      return out;
+    }
+
+    function key(path) {
+      return String(path || '').replace(/^records\//, '').replace(/\.dbr$/, '');
+    }
+
+    function skillRow(x, isChild) {
         var nm = skillName(x.name) || x.name.split('/').pop();
         var computedV = (skillVerdicts[x.name] || {}).verdict || 'nice';
         var vk = vkey('Skills', nm);
@@ -4326,7 +5125,10 @@ function render(save, fileName, isDemo) {
            lost: it is the first line of the breakdown. */
         var det = skillDetail[x.name] || { invested: x.level, effective: x.level, sources: [] };
         var d = document.createElement('details');
-        d.className = 'skl' + (det.sources.length ? '' : ' inert');
+        /* Indented, so a modifier reads as belonging to the skill above it
+           rather than as another skill in the list. */
+        d.className = 'skl' + (det.sources.length ? '' : ' inert')
+                    + (isChild ? ' sklchild' : '');
         var sum = document.createElement('summary');
         /* "16 (+3)": the rank the points bought, and what gear adds on top. The
            sum alone (19) disagrees with the game's own skill window and says
@@ -4336,8 +5138,13 @@ function render(save, fileName, isDemo) {
         if (det.effective !== det.invested) {
           r.appendChild(text('span', 'up', ' (+' + (det.effective - det.invested) + ')'));
         }
-        sum.appendChild(r);
+        /* NAME FIRST, then the rank. The rank led the row and every name in the
+           column started at a different place, because "8 (+7)" and "16" are
+           different widths -- so the thing a reader scans for was the one thing
+           not aligned. Reversed on request; the rank still sits in its own
+           fixed-width right-aligned box, so the numbers stay in a column too. */
         sum.appendChild(text('span', 'sname', nm));
+        sum.appendChild(r);
         sum.appendChild(vicon(vk, overrides[vk] || computedV, computedV, setSkill));
         d.appendChild(sum);
         if (det.sources.length) {
@@ -5038,11 +5845,44 @@ drop.addEventListener('keydown', function (e) {
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); }
 });
 input.addEventListener('change', function () { if (input.files[0]) load(input.files[0]); });
-['dragenter', 'dragover'].forEach(function (t) {
-  drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.add('over'); });
+/* ⚠️ THE WHOLE DOCUMENT IS THE DROP TARGET, not the box.
+   These listeners were on the box alone, and render() HIDES the box as soon as a
+   save is on screen -- so the first save could be dropped and every one after it
+   could not, silently, because the only element listening was display:none. The
+   comment on loadOverrides() has said "the page is a drop target" the whole time;
+   it is true now. Dropping a second save is the ordinary case: this reader is for
+   comparing characters.
+
+   preventDefault on dragover at DOCUMENT level as well, or the browser navigates
+   away to the file and the page is simply gone. */
+function fileFrom(e) {
+  var dt = e.dataTransfer;
+  if (!dt) return null;
+  if (dt.files && dt.files[0]) return dt.files[0];
+  // Some sources populate `items` and not `files`. Ask before giving up.
+  if (dt.items) {
+    for (var i = 0; i < dt.items.length; i++) {
+      if (dt.items[i].kind === 'file') {
+        var f = dt.items[i].getAsFile();
+        if (f) return f;
+      }
+    }
+  }
+  return null;
+}
+/* The box's own highlight, only while it is on screen. A counter, because
+   dragleave fires when the pointer crosses into a CHILD element and a bare
+   remove() would flicker the outline off mid-drag. */
+var dragDepth = 0;
+function overOn(on) {
+  if (!drop.classList.contains('hidden')) drop.classList.toggle('over', on);
+}
+document.addEventListener('dragenter', function (e) {
+  e.preventDefault(); dragDepth++; overOn(true);
 });
-['dragleave', 'drop'].forEach(function (t) {
-  drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.remove('over'); });
+document.addEventListener('dragover', function (e) { e.preventDefault(); });
+document.addEventListener('dragleave', function (e) {
+  e.preventDefault(); dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) overOn(false);
 });
 /* ⚠️ A DROP DOES NOT ALWAYS CARRY A FILE, and the silent version of this cost a
    session's debugging. Several Linux file managers hand the browser a
@@ -5050,9 +5890,14 @@ input.addEventListener('change', function () { if (input.files[0]) load(input.fi
    `dataTransfer.files` is empty. Guarding on it and returning meant the page did
    nothing and said nothing, which reads as "the save is broken" rather than "use
    the button". Say so instead; the picker path is right there and works. */
-drop.addEventListener('drop', function (e) {
-  var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+document.addEventListener('drop', function (e) {
+  e.preventDefault(); dragDepth = 0; overOn(false);
+  var f = fileFrom(e);
   if (f) { load(f); return; }
+  // The box may be hidden behind a rendered sheet; bring it back so the message
+  // and the picker it names are actually on screen.
+  el('out').classList.add('hidden');
+  drop.classList.remove('hidden');
   fail('That drag carried a location, not a file — some file managers do this. ' +
        'Click the box and pick player.gdc instead.');
 });
